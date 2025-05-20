@@ -2,7 +2,6 @@ import functions.graphdb as gd
 
 def select_streetnumbers_labels(graphdb_url, repository_name, facts_named_graph_name, res_query_file):
     facts_named_graph = gd.get_named_graph_uri_from_name(graphdb_url, repository_name, facts_named_graph_name)
-    
     query = f"""
     PREFIX addr: <http://rdf.geohistoricaldata.org/def/address#>
     PREFIX ltype: <http://rdf.geohistoricaldata.org/id/codes/address/landmarkType/>
@@ -110,7 +109,7 @@ def select_streetnumber_modified_attr_geom_versions(graphdb_url, repository_name
     PREFIX atype: <http://rdf.geohistoricaldata.org/id/codes/address/attributeType/>
 
     SELECT DISTINCT 
-    ?attrVersion ?attrVersionSource
+    ?newAttrVersion ?attrVersion
     (ofn:asDays(?tStampApp - "0001-01-01"^^xsd:dateTimeStamp) AS ?tStampAppDay)
     (ofn:asDays(?tStampAppBefore - "0001-01-01"^^xsd:dateTimeStamp) AS ?tStampAppBeforeDay)
     (ofn:asDays(?tStampAppAfter - "0001-01-01"^^xsd:dateTimeStamp) AS ?tStampAppAfterDay)
@@ -121,10 +120,10 @@ def select_streetnumber_modified_attr_geom_versions(graphdb_url, repository_name
         ?lm a addr:Landmark ; addr:isLandmarkType ltype:StreetNumber ; addr:hasTrace ?lmTrace .
         GRAPH ?g {{ ?lmTrace a addr:Landmark .}}
         FILTER (?g IN ({named_graph_filter}))
-        ?lm addr:hasAttribute [addr:isAttributeType atype:Geometry ; addr:hasAttributeVersion ?attrVersion] .
-        ?cgME addr:makesEffective ?attrVersion ; addr:dependsOn ?evME.
-        ?cgO addr:outdates ?attrVersion ; addr:dependsOn ?evO.
-        ?attrVersion prov:derivedFrom ?attrVersionSource .
+        ?lm addr:hasAttribute [addr:isAttributeType atype:Geometry ; addr:hasAttributeVersion ?newAttrVersion] .
+        ?cgME addr:makesEffective ?newAttrVersion ; addr:dependsOn ?evME.
+        ?cgO addr:outdates ?newAttrVersion ; addr:dependsOn ?evO.
+        ?newAttrVersion prov:wasDerivedFrom ?attrVersion .
 
         OPTIONAL {{ ?evME addr:hasTime [addr:timeStamp ?tStampApp ; addr:timePrecision ?tPrecApp] }}
         OPTIONAL {{ ?evME addr:hasTimeBefore [addr:timeStamp ?tStampAppBefore ; addr:timePrecision ?tPrecAppBefore] }}

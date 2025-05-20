@@ -68,15 +68,12 @@ out_changes = pd.merge(changes_sample, random_labels_for_changes, on="sn", how="
 ####################################################################################
 
 versions_desc = cfd.create_version_descriptions(out_versions)
-json_versions_desc = {"states": versions_desc}
-
 changes_desc = cfd.create_change_descriptions(out_changes)
-json_changes_desc = {"events": changes_desc}
 
 # Exporter dans un fichier JSON
 with open(sn_version_descriptions_file, 'w', encoding='utf-8') as f:
-    json.dump(json_versions_desc, f, ensure_ascii=False, indent=4)
+    json.dump(versions_desc, f, ensure_ascii=False, indent=4)
 
 # Exporter dans un fichier JSON
 with open(sn_change_descriptions_file, 'w', encoding='utf-8') as f:
-    json.dump(json_changes_desc, f, ensure_ascii=False, indent=4)
+    json.dump(changes_desc, f, ensure_ascii=False, indent=4)

@@ -21,9 +21,9 @@ frag_sn_states_named_graph_name = "fragmentary_states_streetnumbers"
 frag_sn_events_named_graph_name = "fragmentary_events_streetnumbers"
 
 # File paths
-sn_modified_attr_file = data_folder + "streetnumber_with_modified_attr_geom_versions.csv" 
-sn_unmodified_attr_file = data_folder + "streetnumber_without_modified_attr_geom_versions.csv"
-sn_unmodified_filtered_attr_file = data_folder + "streetnumber_filtered_without_modified_attr_geom_versions.csv"
+sn_modified_attr_file = data_folder + "streetnumber_modified_attr_geom_versions.csv" 
+sn_unmodified_attr_file = data_folder + "streetnumber_unmodified_attr_geom_versions.csv"
+sn_unmodified_filtered_attr_file = data_folder + "streetnumber_filtered_unmodified_attr_geom_versions.csv"
 output_file = data_folder + "out.csv"
 
 # Create the CSV files from the SPARQL queries
@@ -43,7 +43,7 @@ df_unmodified = pd.read_csv(sn_unmodified_attr_file)
 # df_unmodified = df_unmodified[df_unmodified['label'].isin(df_modified['label'])]
 
 # Merge the two dataframes on the "sn" column
-out_df = pd.merge(df_modified, df_unmodified, on="join", how="left", suffixes=('_modified', '_unmodified'))
+out_df = pd.merge(df_modified, df_unmodified, on="attrVersion", how="outer", suffixes=('_modified', '_unmodified'))
 
 df_unmodified.to_csv(sn_unmodified_filtered_attr_file, index=False)
 out_df.to_csv(output_file, index=False)

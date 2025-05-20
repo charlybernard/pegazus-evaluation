@@ -1,5 +1,38 @@
 import functions.graphdb as gd
 
+
+def select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_name, facts_named_graph_name, res_query_file):
+    facts_named_graph = gd.get_named_graph_uri_from_name(graphdb_url, repository_name, facts_named_graph_name)
+
+    query = f"""
+    PREFIX addr: <http://rdf.geohistoricaldata.org/def/address#>
+    PREFIX ltype: <http://rdf.geohistoricaldata.org/id/codes/address/landmarkType/>
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    PREFIX atype: <http://rdf.geohistoricaldata.org/id/codes/address/attributeType/>
+    PREFIX lrtype: <http://rdf.geohistoricaldata.org/id/codes/address/landmarkRelationType/>
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    PREFIX prov: <http://www.w3.org/ns/prov#>
+    PREFIX rico: <https://www.ica.org/standards/RiC/ontology#>
+
+    SELECT DISTINCT
+    ?sn ?attrVersion ?sourceLabel
+    WHERE {{
+        BIND({facts_named_graph.n3()} AS ?gf)
+        GRAPH ?gf {{
+            ?sn a addr:Landmark ;addr:isLandmarkType ltype:StreetNumber ; rdfs:label ?snLabel ; addr:hasAttribute [addr:isAttributeType atype:Geometry; addr:hasAttributeVersion ?attrVersion].
+            [] a addr:LandmarkRelation ; addr:locatum ?sn ; addr:relatum ?th ; addr:isLandmarkRelationType lrtype:Belongs .
+            ?th addr:isLandmarkType ltype:Thoroughfare ; skos:hiddenLabel ?thLabel .
+            BIND(CONCAT(?thLabel, "||", ?snLabel) AS ?label)
+        }}
+        ?attrVersion addr:hasTrace ?traceAttrVers .
+        ?traceAttrVers prov:wasDerivedFrom [rico:isOrWasDescribedBy [rdfs:label ?sourceLabel]] .
+        }}
+    """
+
+    gd.select_query_to_txt_file(query, graphdb_url, repository_name, res_query_file)
+
+##################################
+
 def select_streetnumbers_labels(graphdb_url, repository_name, facts_named_graph_name, res_query_file):
     facts_named_graph = gd.get_named_graph_uri_from_name(graphdb_url, repository_name, facts_named_graph_name)
     query = f"""

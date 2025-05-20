@@ -1,6 +1,8 @@
 import functions.addr_matching as am
 import functions.db_connection as dbc
 
+data_folder = "../data/eval_1/"
+
 schema_name = "charly_bernard_verite_these"
 links_table_name = "auto_links_adresses"
 id_table_from_col = "id_from"
@@ -11,10 +13,12 @@ geom_col = "geometry"
 id_col = "id"
 validated_col = "validated"
 to_keep_col = "to_keep"
+similar_geom_col = "are_similar_geom"
 creation_date_col = "creation_date"
 method_col = "method"
 
 default_epsg_code = 2154
+max_distance = 5 # Distance in meters
 simp_label_col = "simplified_label"
 norm_label_col = "normalised_label"
 
@@ -65,7 +69,7 @@ tables_settings = [
 ]
 
 # Connexion à la base de données PostgreSQL
-config_file = "./configs/db_config.ini"
+config_file = "../configs/db_config.ini"
 conn = dbc.connect_bdd_from_config_file(config_file)
 
 exceptions = [
@@ -97,8 +101,8 @@ exceptions = [
 ]
 
 # Path to the CSV file for manual links
-csv_file_path = "manual_links.csv"
-to_keep_links_path = "to_keep_links.csv"
+csv_file_path = data_folder + "manual_links.csv"
+to_keep_links_file_path = data_folder + "to_keep_links.csv"
 
 ############################################ Links creation ############################################ 
 
@@ -114,16 +118,17 @@ to_keep_links_path = "to_keep_links.csv"
 # # # Create links between tables
 # am.create_links_table(conn, schema_name, links_table_name,
 #                       id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
-#                       geom_col, validated_col, to_keep_col, method_col, creation_date_col, default_epsg_code, overwrite=True)
+#                       geom_col, validated_col, to_keep_col, similar_geom_col, method_col, creation_date_col, default_epsg_code, overwrite=True)
 # am.create_links_table_from_multiple_tables(conn, tables_settings, schema_name, links_table_name,
 #                                             id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
-#                                             geom_col, validated_col, to_keep_col, method_col, creation_date_col, simp_label_col, norm_label_col, default_epsg_code)
+#                                             geom_col, validated_col, to_keep_col, similar_geom_col, method_col, creation_date_col, simp_label_col, norm_label_col,
+#                                             default_epsg_code, max_distance)
 
-# # Insert manual links from CSV
-# am.insert_manual_links_from_csv(conn, schema_name, links_table_name, csv_file_path,
-#                                  id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
-#                                  geom_col, validated_col, method_col, creation_date_col, default_epsg_code)
-# print(f"Manual links from {csv_file_path} inserted")
+# # # Insert manual links from CSV
+# # am.insert_manual_links_from_csv(conn, schema_name, links_table_name, csv_file_path,
+# #                                  id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
+# #                                  geom_col, validated_col, method_col, creation_date_col, default_epsg_code)
+# # print(f"Manual links from {csv_file_path} inserted")
 
 # # Get links to keep
 # am.get_links_to_keep(conn, schema_name, links_table_name, tables_settings, id_table_from_col, table_name_from_col, table_name_to_col, to_keep_col)
@@ -131,12 +136,11 @@ to_keep_links_path = "to_keep_links.csv"
 # # Create views for final links
 # am.create_view_for_final_links(conn, schema_name, links_table_name, to_keep_col)
 
-
 ############################################################################################################### 
 
 am.extract_to_keep_links(conn, tables_settings, schema_name, links_table_name,
                       id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
-                      geom_col, to_keep_col, simp_label_col, to_keep_links_path)
+                      geom_col, to_keep_col, similar_geom_col, simp_label_col, to_keep_links_file_path)
 
 conn.close()
 

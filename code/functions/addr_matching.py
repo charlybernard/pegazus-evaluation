@@ -160,7 +160,7 @@ def get_address_label_from_street_and_number(number:str, street_label:str, excep
 
 def create_links_table(conn, schema_name, links_table_name,
                        id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
-                       geom_col, validated_col, to_keep_col, method_col, creation_date_col, epsg_code, overwrite=False):
+                       geom_col, validated_col, to_keep_col, similar_geom_col, method_col, creation_date_col, epsg_code, overwrite=False):
     
     query = ""
     if overwrite:
@@ -177,6 +177,7 @@ def create_links_table(conn, schema_name, links_table_name,
     "{method_col}" TEXT DEFAULT 'manual',
     "{creation_date_col}" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     "{to_keep_col}" BOOLEAN DEFAULT TRUE,
+    "{similar_geom_col}" BOOLEAN DEFAULT FALSE,
     "{geom_col}" geometry(LineString, {epsg_code})
     );
     
@@ -190,35 +191,37 @@ def create_links_table(conn, schema_name, links_table_name,
 
 def create_links_table_from_multiple_tables(conn, tables_settings, schema_name, links_table_name,
                                             id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
-                                            geom_col, validated_col, to_keep_col, method_col, creation_date_col, 
-                                            simp_label_col, norm_label_col, default_epsg_code):
+                                            geom_col, validated_col, to_keep_col, similar_geom_col, method_col, creation_date_col, 
+                                            simp_label_col, norm_label_col, default_epsg_code, max_distance):
     # # Create links between tables
     table_pairs = list(itertools.combinations(tables_settings, 2))
     for pair in table_pairs:
         table_settings_from, table_settings_to = pair[0], pair[1]
         table_name_from, table_name_to = table_settings_from["name"], table_settings_to["name"]
-        create_links_between_similar_adresses(table_settings_from, table_settings_to, conn, schema_name, links_table_name,
+        create_links_between_similar_addresses(table_settings_from, table_settings_to, conn, schema_name, links_table_name,
                                                 id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
-                                                geom_col, validated_col, to_keep_col, method_col, creation_date_col,
-                                                default_epsg_code, simp_label_col)
+                                                geom_col, validated_col, to_keep_col, similar_geom_col, method_col, creation_date_col,
+                                                default_epsg_code, simp_label_col,
+                                                max_distance=max_distance)
         create_views_for_table_pair(conn, schema_name, links_table_name, table_name_from, table_name_to,
                                     id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
                                     geom_col, validated_col, norm_label_col)
         print(f"Links between {table_name_from} and {table_name_to} created")
 
 
-def create_links_between_similar_adresses(table_settings_from, table_settings_to, conn, schema_name, links_table_name,
+def create_links_between_similar_addresses(table_settings_from, table_settings_to, conn, schema_name, links_table_name,
                                           id_col_from, id_col_to, table_name_from_col, table_name_to_col,
-                                          geom_col, validated_col, to_keep_col, method_col, creation_date_col,
-                                          epsg_code, simp_label_col):
+                                          geom_col, validated_col, to_keep_col, similar_geom_col, method_col, creation_date_col,
+                                          epsg_code, simp_label_col, max_distance=5):
     table_name_from = table_settings_from.get("name")
     table_name_to = table_settings_to.get("name")
 
     id_col_1, geom_col_1 = get_postgis_table_geom_settings(conn, schema_name, table_name_from)
     id_col_2, geom_col_2 = get_postgis_table_geom_settings(conn, schema_name, table_name_to)
 
-    query = f""" 
-    INSERT INTO {schema_name}.{links_table_name} (\"{id_col_from}\", \"{id_col_to}\", \"{table_name_from_col}\", \"{table_name_to_col}\", \"{geom_col}\", \"{validated_col}\", \"{to_keep_col}\", \"{method_col}\")
+    query1 = f""" 
+    INSERT INTO {schema_name}.{links_table_name}
+    (\"{id_col_from}\", \"{id_col_to}\", \"{table_name_from_col}\", \"{table_name_to_col}\", \"{geom_col}\", \"{validated_col}\", \"{to_keep_col}\", \"{method_col}\")
     SELECT
         t1.{id_col_1},
         t2.{id_col_2},
@@ -236,9 +239,15 @@ def create_links_between_similar_adresses(table_settings_from, table_settings_to
     FROM {schema_name}.{table_name_from} AS t1, {schema_name}.{table_name_to} AS t2
     WHERE t1.{simp_label_col} = t2.{simp_label_col};
     """
+
+    query2 = f"""
+    UPDATE {schema_name}.{links_table_name}
+    SET {similar_geom_col} = (ST_Length(ST_Transform("{geom_col}", {epsg_code})) < {max_distance});
+    """
     
     cur = conn.cursor()
-    cur.execute(query)
+    cur.execute(query1)
+    cur.execute(query2)
     conn.commit()
 
 
@@ -488,11 +497,10 @@ def extract_manual_links(conn, schema_name, links_table_name,
     df.to_csv(output_csv_path, index=False)
 
     print(f"Exported to {output_csv_path}")
-    
 
 def extract_to_keep_links(conn, tables_settings, schema_name, links_table_name,
                       id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
-                      geom_col, to_keep_col, simp_label_col, output_csv_path):
+                      geom_col, to_keep_col, similar_geom_col, simp_label_col, output_csv_path):
     cur = conn.cursor()
 
     # Mets les données dans un DataFrame
@@ -511,6 +519,7 @@ def extract_to_keep_links(conn, tables_settings, schema_name, links_table_name,
                 lt.{table_name_from_col} AS {table_name_from_col},
                 lt.{id_table_to_col} AS {id_table_to_col},
                 lt.{table_name_to_col} AS {table_name_to_col},
+                lt.{similar_geom_col} AS {similar_geom_col},
                 t1.normalised_label AS label_from,
                 t2.normalised_label AS label_to,
                 ST_AsText(ST_Transform(lt.{geom_col}, 2154)) AS {geom_col},

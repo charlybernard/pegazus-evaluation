@@ -1,6 +1,14 @@
 import pandas as pd
+from rdflib import URIRef
 
-data_folder = "../data/"
+import functions.data_from_sparql_queries as dfsq
+import functions.evaluation_aux as ea
+
+data_folder = "../data/eval_1/"
+
+graphdb_url = URIRef("http://localhost:7200")
+repository_name = "addresses_from_factoids"
+facts_named_graph_name = "facts"
 
 """
 SPARQL query to get the links from the facts graph
@@ -14,33 +22,25 @@ PREFIX lrtype: <http://rdf.geohistoricaldata.org/id/codes/address/landmarkRelati
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 PREFIX prov: <http://www.w3.org/ns/prov#>
 PREFIX rico: <https://www.ica.org/standards/RiC/ontology#>
-SELECT DISTINCT ?label ?sn ?sourceLabel1 ?sourceLabel2
+SELECT DISTINCT
+?sn ?attrVersion ?sourceLabel
 WHERE {
     BIND(<http://localhost:7200/repositories/addresses_from_factoids/rdf-graphs/facts> AS ?gf)
     GRAPH ?gf {
-        ?sn a addr:Landmark ;addr:isLandmarkType ltype:StreetNumber ; rdfs:label ?snLabel ; addr:hasAttribute [addr:isAttributeType atype:Geometry; addr:hasAttributeVersion ?attrVersion1, ?attrVersion2].
+        ?sn a addr:Landmark ;addr:isLandmarkType ltype:StreetNumber ; rdfs:label ?snLabel ; addr:hasAttribute [addr:isAttributeType atype:Geometry; addr:hasAttributeVersion ?attrVersion].
         [] a addr:LandmarkRelation ; addr:locatum ?sn ; addr:relatum ?th ; addr:isLandmarkRelationType lrtype:Belongs .
         ?th addr:isLandmarkType ltype:Thoroughfare ; skos:hiddenLabel ?thLabel .
         BIND(CONCAT(?thLabel, "||", ?snLabel) AS ?label)
     } 
-    ?attrVersion1 addr:hasTrace ?traceAttrVers1 .
-    ?traceAttrVers1 prov:wasDerivedFrom [rico:isOrWasDescribedBy [rdfs:label ?sourceLabel1]] ; addr:versionValue ?geom1 .
-    ?attrVersion2 addr:hasTrace ?traceAttrVers2 .
-    ?traceAttrVers2 prov:wasDerivedFrom [rico:isOrWasDescribedBy [rdfs:label ?sourceLabel2]] ; addr:versionValue ?geom2 .
-    {
-        [] addr:makesEffective ?attrVersion2 ; addr:outdates ?attrVersion1 .
-    } UNION {
-        FILTER(?attrVersion1 = ?attrVersion2)
-    }
-    FILTER(?traceAttrVers1 != ?traceAttrVers2)
+    ?attrVersion addr:hasTrace ?traceAttrVers .
+    ?traceAttrVers prov:wasDerivedFrom [rico:isOrWasDescribedBy [rdfs:label ?sourceLabel]] .
 }
 ```
 
 Export the results to a CSV file with the following columns:
 - label
 - sn
-- sourceLabel1
-- sourceLabel2
+- sourceLabel
 """
 
 # Remplace par les chemins vers tes fichiers
@@ -49,6 +49,8 @@ facts_graph_file = data_folder + "links_from_facts_graph.csv"
 ground_truth_file = data_folder + "links_from_ground_truth.csv"
 source_mapping_file = data_folder + "sources_mapping.csv"
 output_file = data_folder + "eval_1_output.csv"
+
+dfsq.select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_name, facts_named_graph_name, facts_graph_file)
 
 # Read the CSV files
 df_facts = pd.read_csv(facts_graph_file)

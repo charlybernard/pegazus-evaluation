@@ -5,28 +5,29 @@ def select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_n
     facts_named_graph = gd.get_named_graph_uri_from_name(graphdb_url, repository_name, facts_named_graph_name)
 
     query = f"""
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    PREFIX rico: <https://www.ica.org/standards/RiC/ontology#>
+    PREFIX prov: <http://www.w3.org/ns/prov#>
+    PREFIX ofn: <http://www.ontotext.com/sparql/functions/>
+    PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
     PREFIX addr: <http://rdf.geohistoricaldata.org/def/address#>
     PREFIX ltype: <http://rdf.geohistoricaldata.org/id/codes/address/landmarkType/>
-    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-    PREFIX atype: <http://rdf.geohistoricaldata.org/id/codes/address/attributeType/>
-    PREFIX lrtype: <http://rdf.geohistoricaldata.org/id/codes/address/landmarkRelationType/>
     PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-    PREFIX prov: <http://www.w3.org/ns/prov#>
-    PREFIX rico: <https://www.ica.org/standards/RiC/ontology#>
+    PREFIX lrtype: <http://rdf.geohistoricaldata.org/id/codes/address/landmarkRelationType/>
+    PREFIX atype: <http://rdf.geohistoricaldata.org/id/codes/address/attributeType/>
 
-    SELECT DISTINCT
-    ?sn ?attrVersion ?sourceLabel
+    SELECT DISTINCT 
+    ?sn ?label ?attrVersion ?sourceLabel
     WHERE {{
         BIND({facts_named_graph.n3()} AS ?gf)
-        GRAPH ?gf {{
-            ?sn a addr:Landmark ;addr:isLandmarkType ltype:StreetNumber ; rdfs:label ?snLabel ; addr:hasAttribute [addr:isAttributeType atype:Geometry; addr:hasAttributeVersion ?attrVersion].
-            [] a addr:LandmarkRelation ; addr:locatum ?sn ; addr:relatum ?th ; addr:isLandmarkRelationType lrtype:Belongs .
-            ?th addr:isLandmarkType ltype:Thoroughfare ; skos:hiddenLabel ?thLabel .
-            BIND(CONCAT(?thLabel, "||", ?snLabel) AS ?label)
-        }}
-        ?attrVersion addr:hasTrace ?traceAttrVers .
-        ?traceAttrVers prov:wasDerivedFrom [rico:isOrWasDescribedBy [rdfs:label ?sourceLabel]] .
-        }}
+        GRAPH ?gf {{ ?sn a addr:Landmark ; addr:isLandmarkType ltype:StreetNumber ; skos:hiddenLabel ?snLabel .}}
+        ?sn addr:hasAttribute [addr:isAttributeType atype:Geometry ; addr:hasAttributeVersion ?attrVersion] .
+        [] a addr:LandmarkRelation ; addr:locatum ?sn ; addr:relatum ?th ; addr:isLandmarkRelationType lrtype:Belongs .
+        ?th addr:isLandmarkType ltype:Thoroughfare ; skos:hiddenLabel ?thLabel .
+        BIND(CONCAT(?thLabel, "||", ?snLabel) AS ?label)
+        ?attrVersion prov:wasDerivedFrom ?prov .
+        ?prov rico:isOrWasDescribedBy [rdfs:label ?sourceLabel] .
+    }}
     """
 
     gd.select_query_to_txt_file(query, graphdb_url, repository_name, res_query_file)
@@ -127,7 +128,9 @@ def select_streetnumbers_attr_geom_change_valid_times(graphdb_url, repository_na
 
     gd.select_query_to_txt_file(query, graphdb_url, repository_name, res_query_file)
 
-def select_streetnumber_modified_attr_geom_versions(graphdb_url, repository_name, named_graph_names:list, res_query_file):
+def select_streetnumber_modified_attr_geom_versions(graphdb_url, repository_name,
+                                                    facts_named_graph_name, named_graph_names:list, res_query_file):
+    facts_named_graph = gd.get_named_graph_uri_from_name(graphdb_url, repository_name, facts_named_graph_name)
     named_graph_uris = [gd.get_named_graph_uri_from_name(graphdb_url, repository_name, name) for name in named_graph_names]
     named_graph_filter = ",".join([uri.n3() for uri in named_graph_uris])
     
@@ -150,14 +153,15 @@ def select_streetnumber_modified_attr_geom_versions(graphdb_url, repository_name
     (ofn:asDays(?tStampDisBefore - "0001-01-01"^^xsd:dateTimeStamp) AS ?tStampDisBeforeDay)
     (ofn:asDays(?tStampDisAfter - "0001-01-01"^^xsd:dateTimeStamp) AS ?tStampDisAfterDay)
     WHERE {{
-        ?lm a addr:Landmark ; addr:isLandmarkType ltype:StreetNumber ; addr:hasTrace ?lmTrace .
-        GRAPH ?g {{ ?lmTrace a addr:Landmark .}}
-        FILTER (?g IN ({named_graph_filter}))
+        BIND({facts_named_graph.n3()} AS ?gf)
+        GRAPH ?gf {{ ?lm a addr:Landmark ; addr:isLandmarkType ltype:StreetNumber .}}
         ?lm addr:hasAttribute [addr:isAttributeType atype:Geometry ; addr:hasAttributeVersion ?newAttrVersion] .
         ?cgME addr:makesEffective ?newAttrVersion ; addr:dependsOn ?evME.
         ?cgO addr:outdates ?newAttrVersion ; addr:dependsOn ?evO.
         ?newAttrVersion prov:wasDerivedFrom ?attrVersion .
-
+        GRAPH ?g {{ ?attrVersion a prov:Entity . }}
+        FILTER (?g IN ({named_graph_filter}))
+        
         OPTIONAL {{ ?evME addr:hasTime [addr:timeStamp ?tStampApp ; addr:timePrecision ?tPrecApp] }}
         OPTIONAL {{ ?evME addr:hasTimeBefore [addr:timeStamp ?tStampAppBefore ; addr:timePrecision ?tPrecAppBefore] }}
         OPTIONAL {{ ?evME addr:hasTimeAfter [addr:timeStamp ?tStampAppAfter ; addr:timePrecision ?tPrecAppAfter] }}
@@ -166,6 +170,7 @@ def select_streetnumber_modified_attr_geom_versions(graphdb_url, repository_name
         OPTIONAL {{ ?evO addr:hasTimeAfter [addr:timeStamp ?tStampDisAfter ; addr:timePrecision ?tPrecDisAfter] }}
     }}
     """
+    print(query)
 
     gd.select_query_to_txt_file(query, graphdb_url, repository_name, res_query_file)
 

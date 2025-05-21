@@ -1,28 +1,11 @@
 import pandas as pd
 import numpy as np
 import math
+from uuid import uuid4
 from dateutil import parser
 from datetime import datetime
 import random
 import functions.geom_processing as gp
-
-# Fonction pour construire la colonne "join"
-def build_join_label(row):
-    parts = [row['label']]
-    
-    # Partie app
-    if pd.notnull(row['tStampAppDay']):
-        parts.append(f"app={row['tStampAppDay']}")
-    else:
-        parts.append(f"appBefore={row['tStampAppBeforeDay']}&appAfter={row['tStampAppAfterDay']}")
-
-    # Partie dis
-    if pd.notnull(row['tStampDisDay']):
-        parts.append(f"dis={row['tStampDisDay']}")
-    else:
-        parts.append(f"disBefore={row['tStampDisBeforeDay']}&disAfter={row['tStampDisAfterDay']}")
-
-    return "&".join(parts)
 
 ################# Generate a random geometry for each street number #################
 
@@ -168,13 +151,20 @@ def get_times_for_changes(df):
 ##############################################################################
 
 def get_graph_quality_from_attribute_versions(unmodified_sn, modified_sn, frag_source_label):
-    nb_versions_eval, sources_eval = {}, {}
+    all_sn = set(unmodified_sn) | set(modified_sn)
+    nb_versions_eval, sources_eval = {sn:False for sn in all_sn}, {sn:False for sn in all_sn}
+
     for sn, versions in modified_sn.items():
         unmodified_versions = unmodified_sn.get(sn)
 
-        if len(versions) != len(unmodified_versions):
+        if unmodified_versions is None or len(versions) != len(unmodified_versions):
             same_nb_versions, same_sources = False, False
-        
+            # print(sn)
+            # print(unmodified_versions)
+            # print(versions)
+            # # print(f"{len(unmodified_versions)} -> {len(versions)} : {len(unmodified_versions) > len(versions)}")
+            # print("&&&&&&&&")
+
         else:
             same_nb_versions, same_sources = True, True
             for version, sources in versions.items():
@@ -273,3 +263,71 @@ def get_graph_quality_from_attribute_changes(unmodified_sn, modified_sn):
     }
 
     return [sn_with_good_nb_of_changes, sn_with_changes_with_good_times]
+
+###############################################################################
+
+
+def get_ground_truth_version_sources(links_ground_truth_file, sn_without_link_ground_truth_file, source_mapping):
+    d1 = get_ground_truth_version_sources_from_links(links_ground_truth_file, source_mapping)
+    d2 = get_ground_truth_version_sources_from_unlinked_streetnumbers(sn_without_link_ground_truth_file, source_mapping)
+
+    return d1|d2
+
+def get_ground_truth_version_sources_from_links(links_ground_truth_file, source_mapping):
+
+    order_to_label = {v["order"]: v["label"] for v in source_mapping.values()}
+
+    df = pd.read_csv(links_ground_truth_file)
+
+    unique_sn_labels = df["simp_label"].unique()
+    ground_truth_links = {sn: [] for sn in set(unique_sn_labels)}
+    ground_truth_grouped_links = {}
+    for _, row in df.iterrows():
+        label = row["simp_label"]
+        table_from = row["table_from"]
+        table_to = row["table_to"]
+        are_similar_geom = row["are_similar_geom"]
+        order_from = source_mapping[table_from]["order"]
+        order_to = source_mapping[table_to]["order"]
+        ground_truth_links[label].append((order_from, order_to, are_similar_geom))
+
+    for sn in ground_truth_links:
+        links = ground_truth_links[sn]
+        links.sort()
+        
+        # Liste pour stocker les groupes
+        groups = []
+
+        # Démarrer un groupe avec le premier élément
+        current_group = [links[0][0]]
+
+        for source, target, value in links:
+            if value:
+                # Si le lien est vrai, on continue dans le groupe
+                current_group.append(target)
+            else:
+                # Sinon, on termine le groupe et on en commence un nouveau
+                groups.append(current_group)
+                current_group = [target]
+
+        # Ne pas oublier d'ajouter le dernier groupe
+        groups.append(current_group)
+        
+        groupes_with_labels = {str(uuid4()): {order_to_label[o] for o in group} for group in groups}
+
+        ground_truth_grouped_links[sn] = groupes_with_labels
+
+    return ground_truth_grouped_links
+
+def get_ground_truth_version_sources_from_unlinked_streetnumbers(sn_without_link_ground_truth_file, source_mapping):
+    df = pd.read_csv(sn_without_link_ground_truth_file)
+
+    ground_truth_grouped_links = {}
+    for _, row in df.iterrows():
+        label = row["simp_label"]
+        source = row["table"]
+        source_label = source_mapping[source].get("label")
+        group = {str(uuid4()):{source_label}}
+        ground_truth_grouped_links[label] = group
+    
+    return ground_truth_grouped_links

@@ -555,3 +555,93 @@ def extract_to_keep_links(conn, tables_settings, schema_name, links_table_name,
     df.to_csv(output_csv_path, index=False)
 
     print(f"Exported to {output_csv_path}")
+
+def extract_ground_truth_links(conn, tables_settings, schema_name, links_table_name,
+                      id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
+                      geom_col, to_keep_col, similar_geom_col, simp_label_col, output_csv_path):
+    cur = conn.cursor()
+
+    # Mets les données dans un DataFrame
+    df = pd.DataFrame()
+
+    # Create links between tables
+    table_pairs = list(itertools.combinations(tables_settings, 2))
+    for pair in table_pairs:
+        table_settings_from, table_settings_to = pair[0], pair[1]
+        t1_name, t2_name = table_settings_from["name"], table_settings_to["name"]
+
+        query = f"""
+            SELECT DISTINCT
+                lt.{table_name_from_col} AS {table_name_from_col},
+                lt.{table_name_to_col} AS {table_name_to_col},
+                lt.{similar_geom_col} AS {similar_geom_col},
+                t1.{simp_label_col} AS simp_label
+                FROM
+                {schema_name}.{links_table_name} AS lt,
+                {schema_name}.{t1_name} AS t1,
+                {schema_name}.{t2_name} AS t2
+                WHERE
+                lt.{to_keep_col} AND
+                lt.{table_name_from_col} = '{t1_name}' AND
+                lt.{table_name_to_col} = '{t2_name}' AND
+                lt.{id_table_from_col} = t1.id AND
+                lt.{id_table_to_col} = t2.id
+        """
+
+        cur.execute(query)
+
+        # Récupère les résultats et les noms des colonnes
+        rows = cur.fetchall()
+        columns = [desc[0] for desc in cur.description]
+
+        # Mets les données dans un DataFrame
+        dfBis = pd.DataFrame(rows, columns=columns)
+        df = pd.concat([df, dfBis], ignore_index=True)
+
+    # Ferme le curseur proprement
+    cur.close()
+
+    # Exporte en CSV
+    df.to_csv(output_csv_path, index=False)
+
+    print(f"Exported to {output_csv_path}")
+
+
+def extract_streetnumbers_without_link(conn, tables_settings, schema_name, links_table_name,
+                      id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
+                      geom_col, to_keep_col, similar_geom_col, simp_label_col, output_csv_path):
+    cur = conn.cursor()
+
+    # Mets les données dans un DataFrame
+    df = pd.DataFrame()
+
+    for table_set in tables_settings:
+        table_name = table_set["name"]
+        query = f"""
+            SELECT DISTINCT
+                '{table_name}' AS table, {simp_label_col} AS simp_label
+            FROM {schema_name}.{table_name}
+            WHERE id NOT IN (
+                SELECT {id_table_from_col} FROM {schema_name}.{links_table_name} WHERE {table_name_from_col} = '{table_name}'
+                UNION
+                SELECT {id_table_to_col} FROM {schema_name}.{links_table_name} WHERE {table_name_to_col} = '{table_name}'
+            ) AND {simp_label_col} IS NOT NULL ;
+        """
+
+        cur.execute(query)
+
+        # Récupère les résultats et les noms des colonnes
+        rows = cur.fetchall()
+        columns = [desc[0] for desc in cur.description]
+
+        # Mets les données dans un DataFrame
+        dfBis = pd.DataFrame(rows, columns=columns)
+        df = pd.concat([df, dfBis], ignore_index=True)
+
+    # Ferme le curseur proprement
+    cur.close()
+
+    # Exporte en CSV
+    df.to_csv(output_csv_path, index=False)
+
+    print(f"Exported to {output_csv_path}")

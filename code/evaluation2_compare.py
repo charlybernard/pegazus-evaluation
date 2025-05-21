@@ -31,15 +31,15 @@ sn_attr_geom_states_events_times_file = data_folder + "changes_and_times_from_st
 
 output_file = data_folder + "out.csv"
 
-# # Create the CSV files from the SPARQL queries
-# frag_named_graph_names = [frag_sn_states_named_graph_name, frag_sn_events_named_graph_name]
-# dfsq.select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_name, facts_named_graph_name, sn_attr_geom_sources_file)
-# dfsq.select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_states_name, facts_named_graph_name, sn_attr_geom_states_and_sources_file)
-# dfsq.select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_states_and_events_name, facts_named_graph_name, sn_attr_geom_states_events_sources_file)
+# Create the CSV files from the SPARQL queries
+frag_named_graph_names = [frag_sn_states_named_graph_name, frag_sn_events_named_graph_name]
+dfsq.select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_name, facts_named_graph_name, sn_attr_geom_sources_file)
+dfsq.select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_states_name, facts_named_graph_name, sn_attr_geom_states_and_sources_file)
+dfsq.select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_states_and_events_name, facts_named_graph_name, sn_attr_geom_states_events_sources_file)
 
-# dfsq.select_streetnumbers_attr_geom_change_times(graphdb_url, repository_name, facts_named_graph_name, sn_attr_geom_times_file)
-# dfsq.select_streetnumbers_attr_geom_change_times(graphdb_url, repository_states_name, facts_named_graph_name, sn_attr_geom_states_and_times_file)
-# dfsq.select_streetnumbers_attr_geom_change_times(graphdb_url, repository_states_and_events_name, facts_named_graph_name, sn_attr_geom_states_events_times_file)
+dfsq.select_streetnumbers_attr_geom_change_times(graphdb_url, repository_name, facts_named_graph_name, sn_attr_geom_times_file)
+dfsq.select_streetnumbers_attr_geom_change_times(graphdb_url, repository_states_name, facts_named_graph_name, sn_attr_geom_states_and_times_file)
+dfsq.select_streetnumbers_attr_geom_change_times(graphdb_url, repository_states_and_events_name, facts_named_graph_name, sn_attr_geom_states_events_times_file)
 
 # Remplacer 'ton_fichier.csv' par le nom de ton fichier
 df_versions_unmodified = pd.read_csv(sn_attr_geom_sources_file)

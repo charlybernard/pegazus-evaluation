@@ -102,7 +102,6 @@ exceptions = [
 
 # Path to the CSV file for manual links
 csv_file_path = data_folder + "manual_links.csv"
-to_keep_links_file_path = data_folder + "to_keep_links.csv"
 
 ############################################ Links creation ############################################ 
 
@@ -138,9 +137,18 @@ to_keep_links_file_path = data_folder + "to_keep_links.csv"
 
 ############################################################################################################### 
 
-am.extract_to_keep_links(conn, tables_settings, schema_name, links_table_name,
-                      id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
-                      geom_col, to_keep_col, similar_geom_col, simp_label_col, to_keep_links_file_path)
+
+gt_links_file_path = data_folder + "links_ground_truth.csv"
+gt_sn_without_link_file_path = data_folder + "sn_without_link_ground_truth.csv"
+
+am.extract_ground_truth_links(
+    conn, tables_settings, schema_name, links_table_name,
+    id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
+    geom_col, to_keep_col, similar_geom_col, simp_label_col, gt_links_file_path)
+
+am.extract_streetnumbers_without_link(
+    conn, tables_settings, schema_name, links_table_name,
+    id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
+    geom_col, to_keep_col, similar_geom_col, simp_label_col, gt_sn_without_link_file_path)
 
 conn.close()
-

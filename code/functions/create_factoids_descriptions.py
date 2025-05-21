@@ -55,7 +55,6 @@ def create_streetnumber_attr_geom_change_descriptions(sn_label, th_label, time_s
             {
                 "id": 2,
                 "label": th_label,
-                "lang": lang,
                 "type": "thoroughfare",
             },
         ],
@@ -67,6 +66,7 @@ def create_streetnumber_attr_geom_change_descriptions(sn_label, th_label, time_s
                 "relatum": [2],
             },
         ],
+        "lang": lang,
         "time": {
         "stamp": time_stamp,
         "calendar": "gregorian",

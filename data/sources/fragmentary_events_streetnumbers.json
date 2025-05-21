@@ -16,7 +16,6 @@
                 {
                     "id": 2,
                     "label": "boulevard morland",
-                    "lang": "fr",
                     "type": "thoroughfare"
                 }
             ],
@@ -30,6 +29,7 @@
                     ]
                 }
             ],
+            "lang": "fr",
             "time": {
                 "stamp": "1983-08-15T00:00:00Z",
                 "calendar": "gregorian",

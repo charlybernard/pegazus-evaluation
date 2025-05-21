@@ -1,5 +1,36 @@
 import functions.graphdb as gd
 
+def select_streetnumbers_attr_geom_change_times(graphdb_url, repository_name, facts_named_graph_name, res_query_file):
+    facts_named_graph = gd.get_named_graph_uri_from_name(graphdb_url, repository_name, facts_named_graph_name)
+    query = f"""
+    PREFIX ofn: <http://www.ontotext.com/sparql/functions/>
+    PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+    PREFIX addr: <http://rdf.geohistoricaldata.org/def/address#>
+    PREFIX ltype: <http://rdf.geohistoricaldata.org/id/codes/address/landmarkType/>
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    PREFIX lrtype: <http://rdf.geohistoricaldata.org/id/codes/address/landmarkRelationType/>
+    PREFIX atype: <http://rdf.geohistoricaldata.org/id/codes/address/attributeType/>
+
+    SELECT DISTINCT 
+    ?lm ?label ?change 
+    (ofn:asDays(?time - "0001-01-01"^^xsd:dateTimeStamp) AS ?timeDay)
+    (ofn:asDays(?timeBefore - "0001-01-01"^^xsd:dateTimeStamp) AS ?timeBeforeDay)
+    (ofn:asDays(?timeAfter - "0001-01-01"^^xsd:dateTimeStamp) AS ?timeAfterDay)
+    WHERE {{
+        BIND({facts_named_graph.n3()} AS ?gf)
+        GRAPH ?gf {{ ?lm a addr:Landmark }}
+        ?lm addr:isLandmarkType ltype:StreetNumber ; addr:hasAttribute ?attr ; skos:hiddenLabel ?snLabel .
+        ?lr a addr:LandmarkRelation ; addr:isLandmarkRelationType lrtype:Belongs ; addr:locatum ?lm ; addr:relatum [skos:hiddenLabel ?thLabel] .
+        BIND(CONCAT(?thLabel, "||", ?snLabel) AS ?label)
+        ?attr addr:isAttributeType atype:Geometry .
+        ?change addr:appliedTo ?attr ; addr:dependsOn ?event .
+        OPTIONAL {{ ?event addr:hasTime [addr:timeStamp ?time] }}
+        OPTIONAL {{ ?event addr:hasTimeBefore [addr:timeStamp ?timeBefore] }}
+        OPTIONAL {{ ?event addr:hasTimeAfter [addr:timeStamp ?timeAfter] }}
+    }}
+    """
+
+    gd.select_query_to_txt_file(query, graphdb_url, repository_name, res_query_file)
 
 def select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_name, facts_named_graph_name, res_query_file):
     facts_named_graph = gd.get_named_graph_uri_from_name(graphdb_url, repository_name, facts_named_graph_name)

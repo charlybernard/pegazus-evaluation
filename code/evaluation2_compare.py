@@ -24,53 +24,68 @@ frag_sn_events_named_graph_name = "fragmentary_events_streetnumbers"
 sn_attr_geom_sources_file = data_folder + "versions_and_sources_from_unmodified_graph.csv"
 sn_attr_geom_states_and_sources_file = data_folder + "versions_and_sources_from_states_graph.csv" 
 sn_attr_geom_states_events_sources_file = data_folder + "versions_and_sources_from_states_and_events_graph.csv"
+
+sn_attr_geom_times_file = data_folder + "changes_and_times_from_unmodified_graph.csv"
+sn_attr_geom_states_and_times_file = data_folder + "changes_and_times_from_states_graph.csv" 
+sn_attr_geom_states_events_times_file = data_folder + "changes_and_times_from_states_and_events_graph.csv"
+
 output_file = data_folder + "out.csv"
 
-# Create the CSV files from the SPARQL queries
-frag_named_graph_names = [frag_sn_states_named_graph_name, frag_sn_events_named_graph_name]
-dfsq.select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_name, facts_named_graph_name, sn_attr_geom_sources_file)
-dfsq.select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_states_name, facts_named_graph_name, sn_attr_geom_states_and_sources_file)
-dfsq.select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_states_and_events_name, facts_named_graph_name, sn_attr_geom_states_events_sources_file)
-# dfsq.select_streetnumber_unmodified_attr_geom_versions(graphdb_url, repository_name, facts_named_graph_name, sn_unmodified_attr_file)
-# dfsq.select_streetnumber_modified_attr_geom_versions(graphdb_url, repository_states_name, facts_named_graph_name, frag_named_graph_names, sn_modified_attr_file)
+# # Create the CSV files from the SPARQL queries
+# frag_named_graph_names = [frag_sn_states_named_graph_name, frag_sn_events_named_graph_name]
+# dfsq.select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_name, facts_named_graph_name, sn_attr_geom_sources_file)
+# dfsq.select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_states_name, facts_named_graph_name, sn_attr_geom_states_and_sources_file)
+# dfsq.select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_states_and_events_name, facts_named_graph_name, sn_attr_geom_states_events_sources_file)
+
+# dfsq.select_streetnumbers_attr_geom_change_times(graphdb_url, repository_name, facts_named_graph_name, sn_attr_geom_times_file)
+# dfsq.select_streetnumbers_attr_geom_change_times(graphdb_url, repository_states_name, facts_named_graph_name, sn_attr_geom_states_and_times_file)
+# dfsq.select_streetnumbers_attr_geom_change_times(graphdb_url, repository_states_and_events_name, facts_named_graph_name, sn_attr_geom_states_events_times_file)
 
 # Remplacer 'ton_fichier.csv' par le nom de ton fichier
-df_unmodified = pd.read_csv(sn_attr_geom_sources_file)
-df_states = pd.read_csv(sn_attr_geom_states_and_sources_file)
-df_states_events = pd.read_csv(sn_attr_geom_states_events_sources_file)
+df_versions_unmodified = pd.read_csv(sn_attr_geom_sources_file)
+df_versions_states = pd.read_csv(sn_attr_geom_states_and_sources_file)
+df_versions_states_events = pd.read_csv(sn_attr_geom_states_events_sources_file)
+
+# Remplacer 'ton_fichier.csv' par le nom de ton fichier
+df_changes_unmodified = pd.read_csv(sn_attr_geom_times_file)
+df_changes_states = pd.read_csv(sn_attr_geom_states_and_times_file)
+df_changes_states_events = pd.read_csv(sn_attr_geom_states_events_times_file)
+
+#######################################################################################################################
+
+# Know if evolutions of street numbers for which new fragmentary states were inserted does not change (geometry versions are still the result of the merging of the same sources)
 
 # Detect street numbers that has been modified during the process
 frag_source_label = "Factoïdes générés pour les numéros de rue"
 
+unmodified_sn = ea.get_sources_for_versions(df_versions_unmodified, None)
+modified_sn_for_states = ea.get_sources_for_versions(df_versions_states, frag_source_label)
+modified_sn_for_states_events = ea.get_sources_for_versions(df_versions_states_events, frag_source_label)
 
-modified_sn_for_states = df_states[df_states["sourceLabel"] == frag_source_label]["label"].unique()
-modified_sn_for_states_dict = {sn: {} for sn in set(modified_sn_for_states)}
+version_quality_for_states = ea.get_graph_quality_from_attribute_versions(unmodified_sn, modified_sn_for_states, frag_source_label)
+version_quality_for_states_events = ea.get_graph_quality_from_attribute_versions(unmodified_sn, modified_sn_for_states_events, frag_source_label)
 
-for idx, row in df_states.iterrows():
-    sn = row["sn"]
-    sn_label = row["label"]
-    attr_version = row["attrVersion"]
-    source_label = row["sourceLabel"]
+print(version_quality_for_states[0])
+print(version_quality_for_states[1])
+print("-----------------------------")
+print(version_quality_for_states_events[0])
+print(version_quality_for_states_events[1])
 
-    if sn_label in modified_sn_for_states_dict:
-        if attr_version not in modified_sn_for_states_dict[sn_label]:
-            modified_sn_for_states_dict[sn_label][attr_version] = []
-        modified_sn_for_states_dict[sn_label][attr_version].append(source_label)
+######################################################################################################################
 
-print("modified_sn_for_states_dict", modified_sn_for_states_dict)
+# Know if evolutions of street numbers for which new fragmentary states were inserted does not change (changes happen at the same time each time)
 
-modified_sn_for_states_events = df_states_events[df_states["sourceLabel"] == frag_source_label]["label"].unique()
-modified_sn_for_states_events_dict = {sn: {} for sn in set(modified_sn_for_states_events)}
+unmodified_sn = ea.get_times_for_changes(df_changes_unmodified)
+modified_sn_for_states = ea.get_times_for_changes(df_changes_states)
+modified_sn_for_states_events = ea.get_times_for_changes(df_changes_states_events)
 
-# # # Appliquer la fonction pour créer la colonne "join"
-# # df_modified["join"] = df_modified.apply(ea.build_join_label, axis=1)
-# # df_unmodified["join"] = df_unmodified.apply(ea.build_join_label, axis=1)
+change_quality_for_states = ea.get_graph_quality_from_attribute_changes(unmodified_sn, modified_sn_for_states)
+change_quality_for_states_events = ea.get_graph_quality_from_attribute_changes(unmodified_sn, modified_sn_for_states_events)
 
-# # # On garde les street numbers qui sont dans les deux fichiers
-# # df_unmodified = df_unmodified[df_unmodified['label'].isin(df_modified['label'])]
+print("###########################################")
 
-# # Merge the two dataframes on the "sn" column
-# out_df = pd.merge(df_modified, df_unmodified, on="attrVersion", how="inner", suffixes=('_modified', '_unmodified'))
-
-# df_unmodified.to_csv(sn_unmodified_filtered_attr_file, index=False)
-# out_df.to_csv(output_file, index=False)
+print(change_quality_for_states[0])
+print(change_quality_for_states[1])
+print("-----------------------------")
+print(change_quality_for_states_events[0])
+print(change_quality_for_states_events[1])

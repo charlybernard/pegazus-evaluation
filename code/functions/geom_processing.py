@@ -5,6 +5,7 @@ import json
 import geojson
 import pyproj
 import shapely
+import numpy as np
 from shapely import wkt
 from shapely.geometry import shape, Point
 from shapely.ops import transform
@@ -297,29 +298,60 @@ def get_useful_transformers_for_to_crs(to_crs:str, from_crs_list:list[str]):
     return transformers
 
 
+def wkt_to_shapely(wkt_literal, crs_to_uri:URIRef, transformers:dict[str, pyproj.Transformer]={}):
+    wkt_geom_value, wkt_geom_srid = get_wkt_geom_from_geosparql_wktliteral(wkt_literal)
+    crs_from_uri = URIRef(wkt_geom_srid)
+    geom = wkt.loads(wkt_geom_value)
+    geom = get_projected_geometry(geom, crs_from_uri, crs_to_uri, transformers)
+    return geom
+
 def get_centroid_of_union_of_geosparql_wktliterals(wkt_literal_list:list[Literal], crs_to_uri:URIRef, transformers:dict[str, pyproj.Transformer]={}):
     geom_list = []
     for wkt_literal in wkt_literal_list:
-        wkt_geom_value, wkt_geom_srid = get_wkt_geom_from_geosparql_wktliteral(wkt_literal)
-        crs_from_uri = URIRef(wkt_geom_srid)
-        geom = wkt.loads(wkt_geom_value)
-        geom = get_projected_geometry(geom, crs_from_uri, crs_to_uri, transformers)
+        geom = wkt_to_shapely(wkt_literal, crs_to_uri, transformers)
         geom_list.append(geom)
 
     geom_union = shapely.union_all(geom_list)
 
     return geom_union.centroid
 
+# def get_point_around_wkt_literal_geoms(wkt_literal_list:list[Literal], crs_to_uri:URIRef, transformers:dict[str, pyproj.Transformer]={}, max_distance=5):
+#     GEO = Namespace("http://www.opengis.net/ont/geosparql#")
+#     centroid = get_centroid_of_union_of_geosparql_wktliterals(wkt_literal_list, crs_to_uri, transformers)
+#     new_point = get_new_point_near_geom(centroid, max_distance)
+#     new_point_wkt = shapely.to_wkt(new_point)
+#     wkt_out_geom = Literal(f"{crs_to_uri.n3()} {new_point_wkt}", datatype=GEO.wktLiteral)
+
+#     return wkt_out_geom
 
 def get_point_around_wkt_literal_geoms(wkt_literal_list:list[Literal], crs_to_uri:URIRef, transformers:dict[str, pyproj.Transformer]={}, max_distance=5):
     GEO = Namespace("http://www.opengis.net/ont/geosparql#")
-    centroid = get_centroid_of_union_of_geosparql_wktliterals(wkt_literal_list, crs_to_uri, transformers)
-    new_point = get_new_point_near_geom(centroid, max_distance)
+    points = [wkt_to_shapely(wkt_literal, crs_to_uri, transformers) for wkt_literal in wkt_literal_list]
+    new_point = generate_similar_point(points, max_distance)
     new_point_wkt = shapely.to_wkt(new_point)
     wkt_out_geom = Literal(f"{crs_to_uri.n3()} {new_point_wkt}", datatype=GEO.wktLiteral)
 
     return wkt_out_geom
 
+
+#####################################################################
+
+def generate_similar_point(points, max_distance=5):
+    if len(points) == 1:
+        return get_new_point_near_geom(points[0], max_distance=max_distance)
+    
+    # Étape 1 : générer les buffers
+    buffers = [Point(p).buffer(max_distance) for p in points]
+    
+    # Étape 2 : intersection de tous les buffers
+    intersection = buffers[0]
+    for buf in buffers[1:]:
+        intersection = intersection.intersection(buf)
+        if intersection.is_empty:
+            return points[0]  # On renvoie le premier point
+        
+    # Étape 3 : générer un point dans l'intersection (le centroïde)
+    return intersection.centroid
 
 def get_new_point_near_geom(geom, max_distance=5):
     """

@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
+import math
 from dateutil import parser
+from datetime import datetime
 import random
 import functions.geom_processing as gp
 
@@ -32,7 +34,7 @@ def get_random_geometry_for_street_number(values, epsg_code, max_distance=5):
     for version, version_value_list in values.items():
         geom = gp.get_point_around_wkt_literal_geoms(version_value_list, crs_to_uri, geom_transformers, max_distance=max_distance)
         wkt_geom = geom.strip()
-        new_values[version] = geom
+        new_values[version] = wkt_geom
 
     return new_values
 
@@ -54,18 +56,29 @@ def generate_random_dates_for_versions(versions):
         start_ts = start.timestamp()
         end_ts = end.timestamp()
 
-        # Générer deux timestamps aléatoires, puis les convertir
-        t1_ts = random.uniform(start_ts, end_ts)
-        t2_ts = random.uniform(start_ts, end_ts)
+        t1_ts = get_random_date_between_interval(start_ts, end_ts)
+        t2_ts = t1_ts
+        loop_nb, max_loop = 0, 10
+        while t1_ts == t2_ts or loop_nb <= max_loop:
+            t2_ts = get_random_date_between_interval(start_ts, end_ts)
+            loop_nb += 1
 
         # Trier pour garantir t1 < t2
-        t1, t2 = sorted([pd.to_datetime(t1_ts, unit='s'), pd.to_datetime(t2_ts, unit='s')])
-        start = t1.date().isoformat() + 'T00:00:00Z'
-        end = t2.date().isoformat() + 'T00:00:00Z'
+        t1, t2 = sorted([t1_ts, t2_ts])
+
+        start = t1.isoformat() + 'T00:00:00Z'
+        end = t2.isoformat() + 'T00:00:00Z'
+
+        if start == end:
+            print(f"Warning ! start time and end time have the same value : {start}")
 
         versions.at[idx, start_time_col_name] = start
         versions.at[idx, end_time_col_name] = end
 
+def get_random_date_between_interval(ts1, ts2):
+    """Returns a date without time, randomly between two timestamps"""
+    ts = random.uniform(ts1, ts2)
+    return datetime.fromtimestamp(ts).date()
 
 ################# Generate new changes coherent with generated ones #################
 
@@ -114,3 +127,149 @@ def generate_random_dates_for_changes(changes):
             final_time = final_time.date().isoformat() + 'T00:00:00Z'
 
         changes.at[idx, time_col_name] = final_time
+
+##############################################################################
+
+def get_sources_for_versions(df, frag_source_label):
+    if frag_source_label is not None:
+        unique_sn_labels = df[df["sourceLabel"] == frag_source_label]["label"].unique()
+    else:
+        unique_sn_labels = df["label"].unique()
+    sources_for_versions = {sn: {} for sn in set(unique_sn_labels)}
+
+    for _, row in df.iterrows():
+        sn = row["sn"]
+        sn_label = row["label"]
+        attr_version = row["attrVersion"]
+        source_label = row["sourceLabel"]
+
+        if sn_label in unique_sn_labels:
+            if attr_version not in sources_for_versions[sn_label]:
+                sources_for_versions[sn_label][attr_version] = set()
+            sources_for_versions[sn_label][attr_version].add(source_label)
+
+    return sources_for_versions
+
+def get_times_for_changes(df):
+    unique_sn_labels = df["label"].unique()
+    times_for_changes = {sn: [] for sn in set(unique_sn_labels)}
+
+    for _, row in df.iterrows():
+        sn_label = row["label"]
+        time = row["timeDay"]
+        time_after = row["timeAfterDay"]
+        time_before = row["timeBeforeDay"]
+
+        if sn_label in unique_sn_labels:
+            times_for_changes[sn_label].append([time, time_after, time_before])
+
+    return times_for_changes
+
+##############################################################################
+
+def get_graph_quality_from_attribute_versions(unmodified_sn, modified_sn, frag_source_label):
+    nb_versions_eval, sources_eval = {}, {}
+    for sn, versions in modified_sn.items():
+        unmodified_versions = unmodified_sn.get(sn)
+
+        if len(versions) != len(unmodified_versions):
+            same_nb_versions, same_sources = False, False
+        
+        else:
+            same_nb_versions, same_sources = True, True
+            for version, sources in versions.items():
+                has_similar_sources = False
+                for unmodified_version, unmodified_sources in unmodified_versions.items():
+                    subset1, subset2 = sources.copy(), unmodified_sources.copy()
+                    subset1.discard(frag_source_label)
+                    subset2.discard(frag_source_label)
+                    if subset1 == subset2:
+                        has_similar_sources = True
+                if not has_similar_sources:
+                    same_sources = False
+                    # print(unmodified_versions)
+                    # print(versions)
+                    # print(f"{len(unmodified_versions)} -> {len(versions)} : {len(unmodified_versions) > len(versions)}")
+                    # print("&&&&&&&&")
+
+        sources_eval[sn] = same_sources
+        nb_versions_eval[sn] = same_nb_versions
+
+    nb_true_sources = sum(sources_eval.values())
+    nb_false_sources = len(sources_eval) - nb_true_sources
+    nb_true_nb_versions = sum(nb_versions_eval.values())
+    nb_false_nb_versions = len(nb_versions_eval) - nb_true_nb_versions
+
+    sn_with_versions_with_good_sources = {
+        "true": nb_true_sources,
+        "false": nb_false_sources,
+        "total":len(sources_eval),
+        "IoU": nb_true_sources/len(sources_eval)
+    }
+
+    sn_with_good_nb_of_versions = {
+        "true": nb_true_nb_versions,
+        "false": nb_false_nb_versions,
+        "total":len(nb_versions_eval),
+        "IoU": nb_true_nb_versions/len(nb_versions_eval)
+    }
+
+    return [sn_with_good_nb_of_versions, sn_with_versions_with_good_sources]
+
+def get_graph_quality_from_attribute_changes(unmodified_sn, modified_sn):
+
+    nb_changes_eval, times_eval = {}, {}
+    for sn, changes in modified_sn.items():
+        unmodified_changes = unmodified_sn.get(sn)
+        same_nb_changes, same_changes = True, True
+
+        if len(changes) != len(unmodified_changes):
+            same_nb_changes, same_changes = False, False
+            # print(sn)
+            # print(changes)
+            # print(unmodified_changes)
+            # print(f"{len(unmodified_changes)} -> {len(changes)} : {len(unmodified_changes) > len(changes)}")
+            # print("&&&&&&&&")
+        
+        else:
+            for change in changes:
+                has_similar_changes = False
+                for unmodified_change in unmodified_changes:
+                    cg = [None if math.isnan(x) else x for x in change]
+                    unmodified_cg = [None if math.isnan(x) else x for x in unmodified_change]
+                    if cg[0] is not None and cg[0] == unmodified_cg[0]:
+                        has_similar_changes = True
+                    elif cg[0] is None and [cg[1:] == unmodified_cg[1:]]:
+                        has_similar_changes = True
+                if not has_similar_changes:
+                    same_changes = False
+                    # print(sn)
+                    # print(changes)
+                    # print(unmodified_changes)
+                    # print(f"{len(unmodified_changes)} -> {len(changes)} : {len(unmodified_changes) > len(changes)}")
+                    # print("&&&&&&&&")
+
+        times_eval[sn] = same_changes
+        nb_changes_eval[sn] = same_nb_changes
+
+    nb_true_changes = sum(times_eval.values())
+    nb_false_changes = len(times_eval) - nb_true_changes
+
+    nb_true_nb_changes = sum(nb_changes_eval.values())
+    nb_false_nb_changes = len(nb_changes_eval) - nb_true_nb_changes
+
+    sn_with_changes_with_good_times = {
+        "true": nb_true_changes,
+        "false": nb_false_changes,
+        "total":len(times_eval),
+        "IoU": nb_true_changes/len(times_eval)
+    }
+
+    sn_with_good_nb_of_changes = {
+        "true": nb_true_nb_changes,
+        "false": nb_false_nb_changes,
+        "total":len(nb_changes_eval),
+        "IoU": nb_true_nb_changes/len(nb_changes_eval)
+    }
+
+    return [sn_with_good_nb_of_changes, sn_with_changes_with_good_times]

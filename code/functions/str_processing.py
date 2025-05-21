@@ -79,6 +79,27 @@ def normalize_french_commune_name(commune_name:str):
    
     return "".join(commune_name_words)
 
+def normalize_nolang_number_name_version(number_name:str):
+    normalized_name = number_name.lower()
+    normalized_name = normalized_name.replace(" ", "")
+
+    replace_dict = {
+        "bis":"b",
+        "ter":"c",
+        "quater":"d",
+        "quinquies ":"e",
+        "sexies ":"f",
+        "septies ":"g",
+        "octies ":"h",
+        "nonies ":"i",
+        "decies ":"j",
+        ";":"-",
+        "/":"-",
+    }
+    normalized_name = remove_abbreviations_from_dict(normalized_name, replace_dict, False)
+
+    return normalized_name
+
 def normalize_french_thoroughfare_name(thoroughfare_name:str):
     abbreviations_dict = {
         "pl(a|)(\.|)":"place",
@@ -135,6 +156,12 @@ def normalize_french_thoroughfare_name(thoroughfare_name:str):
 
 def simplify_french_landmark_name(landmark_name:str, keep_spaces:bool=True, keep_diacritics:bool=True, sort_characters:bool=False):
     words_to_remove = ["&","a","à","au","aux","d","de","des","du","en","ès","es","et","l","la","le","les","lès","ou"]
+    words_to_replace = {
+        "boulevart":"boulevard",
+        "quay":"quai",
+        "enfans":"enfants",
+        "fauxbourg":"faubourg",
+    }
     commune_name_words = get_words_list_from_label(landmark_name, case_option="lower")
     new_commune_name_words = []
 
@@ -144,6 +171,9 @@ def simplify_french_landmark_name(landmark_name:str, keep_spaces:bool=True, keep
             if not keep_diacritics:
                 word = unidecode.unidecode(word)
             new_commune_name_words.append(word)
+
+    for word, replacement in words_to_replace.items():
+        new_commune_name_words = [replacement if x == word else x for x in new_commune_name_words]
 
     word_sep = ""
     if keep_spaces:
@@ -155,32 +185,6 @@ def simplify_french_landmark_name(landmark_name:str, keep_spaces:bool=True, keep
         simplified_name = "".join(sorted(simplified_name))
 
     return simplified_name
-
-def simplify_french_landmark_number(landmark_number:str, keep_spaces:bool=True, keep_diacritics:bool=True, sort_characters:bool=False):
-    words_to_replace = {"quater":"d", "ter":"c", "bis":"b"}
-    simplified_number = landmark_number.lower()
-    simplified_number = simplified_number.replace(";", "-")
-    simplified_number = remove_spaces(simplified_number)
-
-    for key, value in words_to_replace.items():
-        simplified_number = simplified_number.replace(key, value)
-
-    return simplified_number
-
-def get_lower_simplified_french_street_name_function(variable:str):
-    replacements = [["([- ]de[- ]la[- ]|[- ]de[- ]|[- ]des[- ]|[- ]du[- ]|[- ]le[- ]|[- ]la[- ]|[- ]les[- ]|[- ]aux[- ]|[- ]au[- ]|[- ]à[- ]|[- ]en[- ]|/|-|\\.)", " "],
-                ["(l'|d')", ""],
-                ["[àâ]", "a"], 
-                ["[éèêë]", "e"], 
-                ["[îíìï]", "i"], 
-                ["[ôö]", "o"], 
-                ["[ûüù]", "u"], 
-                ["[ÿŷ]", "y"],
-                ["[ç]", "c"], 
-                ]
-    
-    lc_variable = f"LCASE({variable})"
-    return get_remplacement_sparql_function(lc_variable, replacements)
 
 def get_remplacement_sparql_function(string:str, replacements:list):
     function_str = string
@@ -229,7 +233,7 @@ def normalize_french_name_version(name_version:str, name_type:str):
     
 def normalize_nolang_name_version(name_version:str, name_type:str):
     if name_type == "number":
-        return name_version.lower()
+        return normalize_nolang_number_name_version(name_version)
     else:
         return None
     
@@ -245,7 +249,7 @@ def normalize_name_version(name_version:str, name_type:str, name_lang:str):
 
 def simplify_french_name_version(name_version:str, name_type:str):
     if name_type == "number":
-        return simplify_french_landmark_number(name_version)
+        return remove_spaces(name_version)
     elif name_type in ["thoroughfare", "area"]:
         return simplify_french_landmark_name(name_version, keep_spaces=False, keep_diacritics=False, sort_characters=False)
     else:
@@ -278,4 +282,3 @@ def split_french_address(address):
     if match:
         return match.group(1).strip(), match.group(2).strip()  # (numéro, nom de la voie)
     return None, address.strip()  # Si pas de numéro, renvoyer None et l'adresse complète
- 

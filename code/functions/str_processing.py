@@ -257,7 +257,7 @@ def simplify_french_name_version(name_version:str, name_type:str):
 
 def simplify_nolang_name_version(name_version:str, name_type:str):
     if name_type == "number":
-        return remove_spaces(name_version)
+        return normalize_nolang_number_name_version(name_version)
     return None
 
 def simplify_name_version(name_version:str, name_type:str, name_lang:str):

@@ -61,7 +61,7 @@ source_mapping = {
 }
 
 sn_gt_version_sources = ea.get_ground_truth_version_sources(links_ground_truth_file, sn_without_link_ground_truth_file, source_mapping)
-# dfsq.select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_name, facts_named_graph_name, facts_graph_file)
+dfsq.select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_name, facts_named_graph_name, facts_graph_file)
 
 df_facts_graph = pd.read_csv(facts_graph_file)
 unmodified_sn = ea.get_sources_for_versions(df_facts_graph, None)
@@ -71,20 +71,3 @@ print("-----------------------------")
 print(version_quality_for_states[0])
 print(version_quality_for_states[1])
 print("-----------------------------")
-
-# # Read the CSV files
-# df_facts = pd.read_csv(facts_graph_file)
-# df_ground_truth = pd.read_csv(ground_truth_file)
-
-# df_mapping_from = pd.read_csv(source_mapping_file)
-# df_mapping_from = df_mapping_from.rename(columns=lambda x: x + "_from")
-# df_mapping_to = pd.read_csv(source_mapping_file)
-# df_mapping_to = df_mapping_to.rename(columns=lambda x: x + "_to")
-
-# df_facts = pd.merge(df_facts, df_mapping_from, left_on="sourceLabel1", right_on="gf_source_from", how="inner", suffixes=('', '_from'))
-# df_facts = pd.merge(df_facts, df_mapping_to, left_on="sourceLabel2", right_on="gf_source_to", how="inner", suffixes=('', 'to'))
-
-# df_facts["join_label"] = df_facts["label"] + "&from=" + df_facts["gt_source_from"] + "&to=" + df_facts["gt_source_to"]
-# df_ground_truth["join_label"] = df_ground_truth["simp_label"] + "&from=" + df_ground_truth["table_from"] + "&to=" + df_ground_truth["table_to"]
-# df_jointure = pd.merge(df_facts, df_ground_truth, left_on="join_label", right_on="join_label", how="outer", suffixes=('', '_gt'))
-# df_jointure.to_csv(output_file, index=False)

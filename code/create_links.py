@@ -18,7 +18,7 @@ creation_date_col = "creation_date"
 method_col = "method"
 
 default_epsg_code = 2154
-max_distance = 5 # Distance in meters
+max_distance = 10 # Distance in meters
 simp_label_col = "simplified_label"
 norm_label_col = "normalised_label"
 
@@ -105,35 +105,37 @@ csv_file_path = data_folder + "manual_links.csv"
 
 ############################################ Links creation ############################################ 
 
-# # Create simplified labels for tables
-# # We take into account exceptions :
-# #  - if there is the sublist ["Rue de Basfroid", "rue Basfroi"] in exceptions, it means "Rue de Basfroid" will be replaced by "rue Basfroi" to detect street name similarities
-# am.add_name_columns_for_multiple_tables(conn, tables_settings, schema_name, simp_label_col, norm_label_col, exceptions)
+# Create simplified labels for tables
+# We take into account exceptions :
+#  - if there is the sublist ["Rue de Basfroid", "rue Basfroi"] in exceptions, it means "Rue de Basfroid" will be replaced by "rue Basfroi" to detect street name similarities
+am.add_name_columns_for_multiple_tables(conn, tables_settings, schema_name, simp_label_col, norm_label_col, exceptions)
 
-# # am.extract_manual_links(conn, schema_name, links_table_name,
-# #                       id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
-# #                       geom_col, validated_col, to_keep_col, method_col, creation_date_col, csv_file_path)
-
-# # # Create links between tables
-# am.create_links_table(conn, schema_name, links_table_name,
+# am.extract_manual_links(conn, schema_name, links_table_name,
 #                       id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
-#                       geom_col, validated_col, to_keep_col, similar_geom_col, method_col, creation_date_col, default_epsg_code, overwrite=True)
-# am.create_links_table_from_multiple_tables(conn, tables_settings, schema_name, links_table_name,
-#                                             id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
-#                                             geom_col, validated_col, to_keep_col, similar_geom_col, method_col, creation_date_col, simp_label_col, norm_label_col,
-#                                             default_epsg_code, max_distance)
+#                       geom_col, validated_col, to_keep_col, method_col, creation_date_col, csv_file_path)
 
-# # # Insert manual links from CSV
-# # am.insert_manual_links_from_csv(conn, schema_name, links_table_name, csv_file_path,
-# #                                  id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
-# #                                  geom_col, validated_col, method_col, creation_date_col, default_epsg_code)
-# # print(f"Manual links from {csv_file_path} inserted")
+# # Create links between tables
+am.create_links_table(
+    conn, schema_name, links_table_name,
+    id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
+    geom_col, validated_col, to_keep_col, similar_geom_col, method_col, creation_date_col, default_epsg_code, overwrite=True)
+am.create_links_table_from_multiple_tables(
+    conn, tables_settings, schema_name, links_table_name,
+    id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
+    geom_col, validated_col, to_keep_col, similar_geom_col, method_col, creation_date_col, simp_label_col, norm_label_col,
+    default_epsg_code, max_distance)
 
-# # Get links to keep
-# am.get_links_to_keep(conn, schema_name, links_table_name, tables_settings, id_table_from_col, table_name_from_col, table_name_to_col, to_keep_col)
+# # Insert manual links from CSV
+# am.insert_manual_links_from_csv(conn, schema_name, links_table_name, csv_file_path,
+#                                  id_table_from_col, id_table_to_col, table_name_from_col, table_name_to_col,
+#                                  geom_col, validated_col, method_col, creation_date_col, default_epsg_code)
+# print(f"Manual links from {csv_file_path} inserted")
 
-# # Create views for final links
-# am.create_view_for_final_links(conn, schema_name, links_table_name, to_keep_col)
+# Get links to keep
+am.get_links_to_keep(conn, schema_name, links_table_name, tables_settings, id_table_from_col, table_name_from_col, table_name_to_col, to_keep_col)
+
+# Create views for final links
+am.create_view_for_final_links(conn, schema_name, links_table_name, to_keep_col)
 
 ############################################################################################################### 
 

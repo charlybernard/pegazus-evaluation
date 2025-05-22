@@ -16,7 +16,7 @@ repository_name = "addresses_from_factoids"
 facts_named_graph_name = "facts"
 
 epsg_code = "EPSG:2154"
-max_distance = 5
+max_distance = 10
 
 # Remplace par les chemins vers tes fichiers
 sn_labels_file = data_folder + "streetnumber_labels_final_graph.csv"

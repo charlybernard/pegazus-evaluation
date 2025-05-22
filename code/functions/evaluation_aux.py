@@ -208,10 +208,10 @@ def get_graph_quality_from_attribute_versions(unmodified_sn, modified_sn, frag_s
 
 def get_graph_quality_from_attribute_changes(unmodified_sn, modified_sn):
 
-    nb_changes_eval, times_eval = {}, {}
+    nb_changes_eval, same_times_eval, coherent_times_eval = {}, {}, {}
     for sn, changes in modified_sn.items():
         unmodified_changes = unmodified_sn.get(sn)
-        same_nb_changes, same_changes = True, True
+        same_nb_changes, same_changes, coherent_changes = True, True, True
 
         if len(changes) != len(unmodified_changes):
             same_nb_changes, same_changes = False, False
@@ -223,36 +223,52 @@ def get_graph_quality_from_attribute_changes(unmodified_sn, modified_sn):
         
         else:
             for change in changes:
-                has_similar_changes = False
+                has_similar_changes, has_coherent_changes = False, False
                 for unmodified_change in unmodified_changes:
                     cg = [None if math.isnan(x) else x for x in change]
                     unmodified_cg = [None if math.isnan(x) else x for x in unmodified_change]
                     if cg[0] is not None and cg[0] == unmodified_cg[0]:
-                        has_similar_changes = True
+                        has_similar_changes, has_coherent_changes = True, True
+                    elif cg[0] is not None and None not in unmodified_cg[1:] and unmodified_cg[1] <= cg[0] and cg[0] >= unmodified_cg[2]:
+                        has_similar_changes, has_coherent_changes = False, True
                     elif cg[0] is None and [cg[1:] == unmodified_cg[1:]]:
-                        has_similar_changes = True
+                        has_similar_changes = True, has_coherent_changes = True
+                        
                 if not has_similar_changes:
                     same_changes = False
                     # print(sn)
                     # print(changes)
                     # print(unmodified_changes)
                     # print(f"{len(unmodified_changes)} -> {len(changes)} : {len(unmodified_changes) > len(changes)}")
+                if not has_coherent_changes:
+                    coherent_changes = False
                     # print("&&&&&&&&")
 
-        times_eval[sn] = same_changes
+        coherent_times_eval[sn] = coherent_changes 
+        same_times_eval[sn] = same_changes
         nb_changes_eval[sn] = same_nb_changes
 
-    nb_true_changes = sum(times_eval.values())
-    nb_false_changes = len(times_eval) - nb_true_changes
+    nb_true_same_changes = sum(same_times_eval.values())
+    nb_false_same_changes = len(same_times_eval) - nb_true_same_changes
+
+    nb_true_coherent_changes = sum(coherent_times_eval.values())
+    nb_false_coherent_changes = len(coherent_times_eval) - nb_true_coherent_changes
 
     nb_true_nb_changes = sum(nb_changes_eval.values())
     nb_false_nb_changes = len(nb_changes_eval) - nb_true_nb_changes
 
-    sn_with_changes_with_good_times = {
-        "true": nb_true_changes,
-        "false": nb_false_changes,
-        "total":len(times_eval),
-        "IoU": nb_true_changes/len(times_eval)
+    sn_with_changes_with_same_times = {
+        "true": nb_true_same_changes,
+        "false": nb_false_same_changes,
+        "total":len(same_times_eval),
+        "IoU": nb_true_same_changes/len(same_times_eval)
+    }
+
+    sn_with_changes_with_cohrent_times = {
+        "true": nb_true_coherent_changes,
+        "false": nb_false_coherent_changes,
+        "total":len(coherent_times_eval),
+        "IoU": nb_true_coherent_changes/len(coherent_times_eval)
     }
 
     sn_with_good_nb_of_changes = {
@@ -262,7 +278,7 @@ def get_graph_quality_from_attribute_changes(unmodified_sn, modified_sn):
         "IoU": nb_true_nb_changes/len(nb_changes_eval)
     }
 
-    return [sn_with_good_nb_of_changes, sn_with_changes_with_good_times]
+    return [sn_with_good_nb_of_changes, sn_with_changes_with_same_times, sn_with_changes_with_cohrent_times]
 
 ###############################################################################
 

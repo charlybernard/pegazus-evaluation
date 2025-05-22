@@ -231,9 +231,17 @@ def get_graph_quality_from_attribute_changes(unmodified_sn, modified_sn):
                 for unmodified_change in unmodified_changes:
                     cg = [None if math.isnan(x) else x for x in change]
                     unmodified_cg = [None if math.isnan(x) else x for x in unmodified_change]
+                    # if sn == "ruereuilly||30":
+                    #     print(cg)
+                    #     print(unmodified_cg)
+                    #     print("--------")
                     if cg[0] is not None and cg[0] == unmodified_cg[0]:
                         has_similar_changes, has_coherent_changes = True, True
-                    elif cg[0] is not None and None not in unmodified_cg[1:] and unmodified_cg[1] <= cg[0] and cg[0] >= unmodified_cg[2]:
+                    elif cg[0] is not None and None not in unmodified_cg[1:] and unmodified_cg[1] <= cg[0] and cg[0] <= unmodified_cg[2]:
+                        # print(sn)
+                        # print(change)
+                        # print(unmodified_cg)
+                        # print(unmodified_changes)
                         has_coherent_changes = True
                     elif cg[0] is None and [cg[1:] == unmodified_cg[1:]]:
                         has_similar_changes, has_coherent_changes = True, True
@@ -241,12 +249,18 @@ def get_graph_quality_from_attribute_changes(unmodified_sn, modified_sn):
                 if not has_similar_changes:
                     same_changes = False
                     # print(sn)
-                    # print(changes)
+                    # print(change)
                     # print(unmodified_changes)
-                    # print(f"{len(unmodified_changes)} -> {len(changes)} : {len(unmodified_changes) > len(changes)}")
+                    # # print(f"{len(unmodified_changes)} -> {len(changes)} : {len(unmodified_changes) > len(changes)}")
+                    # print("&&&&&&&&")
+
                 if not has_coherent_changes:
                     coherent_changes = False
-                    # print("&&&&&&&&")
+                    print(sn)
+                    print(change)
+                    print(unmodified_changes)
+                    # print(f"{len(unmodified_changes)} -> {len(changes)} : {len(unmodified_changes) > len(changes)}")
+                    print("&&&&&&&&")
 
         coherent_times_eval[sn] = coherent_changes 
         same_times_eval[sn] = same_changes

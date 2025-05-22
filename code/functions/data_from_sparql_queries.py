@@ -104,6 +104,10 @@ def select_streetnumbers_attr_geom_version_valid_times(graphdb_url, repository_n
         GRAPH ?gf {{
             ?sn a addr:Landmark ;addr:isLandmarkType ltype:StreetNumber ; addr:hasAttribute [addr:isAttributeType atype:Geometry; addr:hasAttributeVersion ?attrVersion].
         }}
+        FILTER NOT EXISTS {{
+            ?attrVersion addr:hasTrace ?traceAV1, ?traceAV2 .
+            ?traceAV1 addr:differentVersionValueFrom ?traceAV2 .
+            }}
         ?cgMe addr:makesEffective ?attrVersion ; addr:dependsOn ?evME.
         ?cgO addr:outdates ?attrVersion ; addr:dependsOn ?evO.
         ?evME addr:hasTime|addr:hasTimeBefore [addr:timeStamp ?startTime] .

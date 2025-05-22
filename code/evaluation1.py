@@ -65,7 +65,7 @@ dfsq.select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_
 
 df_facts_graph = pd.read_csv(facts_graph_file)
 unmodified_sn = ea.get_sources_for_versions(df_facts_graph, None)
-version_quality_for_states = ea.get_graph_quality_from_attribute_versions(unmodified_sn, sn_gt_version_sources, None)
+version_quality_for_states = ea.get_graph_quality_from_attribute_versions(unmodified_sn, sn_gt_version_sources, None, union=True)
 
 print("-----------------------------")
 print(version_quality_for_states[0])

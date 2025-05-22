@@ -150,20 +150,23 @@ def get_times_for_changes(df):
 
 ##############################################################################
 
-def get_graph_quality_from_attribute_versions(unmodified_sn, modified_sn, frag_source_label):
-    all_sn = set(unmodified_sn) | set(modified_sn)
-    nb_versions_eval, sources_eval = {sn:False for sn in all_sn}, {sn:False for sn in all_sn}
+def get_graph_quality_from_attribute_versions(unmodified_sn, modified_sn, frag_source_label, union=False):
+    if union:
+        all_sn = set(unmodified_sn) | set(modified_sn)
+        nb_versions_eval, sources_eval = {sn:False for sn in all_sn}, {sn:False for sn in all_sn}
+    else:
+        nb_versions_eval, sources_eval = {}, {}
 
     for sn, versions in modified_sn.items():
         unmodified_versions = unmodified_sn.get(sn)
 
         if unmodified_versions is None or len(versions) != len(unmodified_versions):
             same_nb_versions, same_sources = False, False
-            # print(sn)
-            # print(unmodified_versions)
-            # print(versions)
-            # # print(f"{len(unmodified_versions)} -> {len(versions)} : {len(unmodified_versions) > len(versions)}")
-            # print("&&&&&&&&")
+            print(sn)
+            print(unmodified_versions)
+            print(versions)
+            # print(f"{len(unmodified_versions)} -> {len(versions)} : {len(unmodified_versions) > len(versions)}")
+            print("&&&&&&&&")
 
         else:
             same_nb_versions, same_sources = True, True
@@ -177,10 +180,10 @@ def get_graph_quality_from_attribute_versions(unmodified_sn, modified_sn, frag_s
                         has_similar_sources = True
                 if not has_similar_sources:
                     same_sources = False
-                    # print(unmodified_versions)
-                    # print(versions)
-                    # print(f"{len(unmodified_versions)} -> {len(versions)} : {len(unmodified_versions) > len(versions)}")
-                    # print("&&&&&&&&")
+                    print(unmodified_versions)
+                    print(versions)
+                    print(f"{len(unmodified_versions)} -> {len(versions)} : {len(unmodified_versions) > len(versions)}")
+                    print("&&&&&&&&")
 
         sources_eval[sn] = same_sources
         nb_versions_eval[sn] = same_nb_versions
@@ -211,10 +214,9 @@ def get_graph_quality_from_attribute_changes(unmodified_sn, modified_sn):
     nb_changes_eval, same_times_eval, coherent_times_eval = {}, {}, {}
     for sn, changes in modified_sn.items():
         unmodified_changes = unmodified_sn.get(sn)
-        same_nb_changes, same_changes, coherent_changes = True, True, True
 
         if len(changes) != len(unmodified_changes):
-            same_nb_changes, same_changes = False, False
+            same_nb_changes, same_changes, coherent_changes = False, False, False
             # print(sn)
             # print(changes)
             # print(unmodified_changes)
@@ -222,6 +224,8 @@ def get_graph_quality_from_attribute_changes(unmodified_sn, modified_sn):
             # print("&&&&&&&&")
         
         else:
+            same_nb_changes, same_changes, coherent_changes = True, True, True
+
             for change in changes:
                 has_similar_changes, has_coherent_changes = False, False
                 for unmodified_change in unmodified_changes:
@@ -230,9 +234,9 @@ def get_graph_quality_from_attribute_changes(unmodified_sn, modified_sn):
                     if cg[0] is not None and cg[0] == unmodified_cg[0]:
                         has_similar_changes, has_coherent_changes = True, True
                     elif cg[0] is not None and None not in unmodified_cg[1:] and unmodified_cg[1] <= cg[0] and cg[0] >= unmodified_cg[2]:
-                        has_similar_changes, has_coherent_changes = False, True
+                        has_coherent_changes = True
                     elif cg[0] is None and [cg[1:] == unmodified_cg[1:]]:
-                        has_similar_changes = True, has_coherent_changes = True
+                        has_similar_changes, has_coherent_changes = True, True
                         
                 if not has_similar_changes:
                     same_changes = False

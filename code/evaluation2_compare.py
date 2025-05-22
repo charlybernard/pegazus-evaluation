@@ -63,15 +63,16 @@ modified_sn_for_states = ea.get_sources_for_versions(df_versions_states, frag_so
 modified_sn_for_states_events = ea.get_sources_for_versions(df_versions_states_events, frag_source_label)
 
 version_quality_for_states = ea.get_graph_quality_from_attribute_versions(unmodified_sn, modified_sn_for_states, frag_source_label)
-# version_quality_for_states_events = ea.get_graph_quality_from_attribute_versions(unmodified_sn, modified_sn_for_states_events, frag_source_label)
+version_quality_for_states_events = ea.get_graph_quality_from_attribute_versions(unmodified_sn, modified_sn_for_states_events, frag_source_label)
 
+print("-----------------------------")
 print(version_quality_for_states[0])
 print(version_quality_for_states[1])
 print("-----------------------------")
-# print(version_quality_for_states_events[0])
-# print(version_quality_for_states_events[1])
+print(version_quality_for_states_events[0])
+print(version_quality_for_states_events[1])
 
-######################################################################################################################
+# ######################################################################################################################
 
 # Know if evolutions of street numbers for which new fragmentary states were inserted does not change (changes happen at the same time each time)
 
@@ -86,6 +87,8 @@ print("###########################################")
 
 print(change_quality_for_states[0])
 print(change_quality_for_states[1])
+print(change_quality_for_states[2])
 print("-----------------------------")
 print(change_quality_for_states_events[0])
 print(change_quality_for_states_events[1])
+print(change_quality_for_states_events[2])

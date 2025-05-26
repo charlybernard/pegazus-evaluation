@@ -153,6 +153,9 @@ def get_times_for_changes(df):
 def get_graph_quality_from_attribute_versions(unmodified_sn, modified_sn, frag_source_label, union=False):
     if union:
         all_sn = set(unmodified_sn) | set(modified_sn)
+        # unlinked_housenumbers_from_graph = set(modified_sn)-set(unmodified_sn)
+        # unlinked_housenumbers_from_ground_truth = set(unmodified_sn)-set(modified_sn)
+
         nb_versions_eval, sources_eval = {sn:False for sn in all_sn}, {sn:False for sn in all_sn}
     else:
         nb_versions_eval, sources_eval = {}, {}
@@ -162,11 +165,11 @@ def get_graph_quality_from_attribute_versions(unmodified_sn, modified_sn, frag_s
 
         if unmodified_versions is None or len(versions) != len(unmodified_versions):
             same_nb_versions, same_sources = False, False
-            print(sn)
-            print(unmodified_versions)
-            print(versions)
-            # print(f"{len(unmodified_versions)} -> {len(versions)} : {len(unmodified_versions) > len(versions)}")
-            print("&&&&&&&&")
+            # print(sn)
+            # print(unmodified_versions)
+            # print(versions)
+            # # print(f"{len(unmodified_versions)} -> {len(versions)} : {len(unmodified_versions) > len(versions)}")
+            # print("&&&&&&&&")
 
         else:
             same_nb_versions, same_sources = True, True
@@ -180,10 +183,11 @@ def get_graph_quality_from_attribute_versions(unmodified_sn, modified_sn, frag_s
                         has_similar_sources = True
                 if not has_similar_sources:
                     same_sources = False
-                    print(unmodified_versions)
-                    print(versions)
-                    print(f"{len(unmodified_versions)} -> {len(versions)} : {len(unmodified_versions) > len(versions)}")
-                    print("&&&&&&&&")
+                    # print(sn)
+                    # print(unmodified_versions)
+                    # print(versions)
+                    # print(f"{len(unmodified_versions)} -> {len(versions)} : {len(unmodified_versions) > len(versions)}")
+                    # print("&&&&&&&&")
 
         sources_eval[sn] = same_sources
         nb_versions_eval[sn] = same_nb_versions
@@ -256,11 +260,11 @@ def get_graph_quality_from_attribute_changes(unmodified_sn, modified_sn):
 
                 if not has_coherent_changes:
                     coherent_changes = False
-                    print(sn)
-                    print(change)
-                    print(unmodified_changes)
-                    # print(f"{len(unmodified_changes)} -> {len(changes)} : {len(unmodified_changes) > len(changes)}")
-                    print("&&&&&&&&")
+                    # print(sn)
+                    # print(change)
+                    # print(unmodified_changes)
+                    # # print(f"{len(unmodified_changes)} -> {len(changes)} : {len(unmodified_changes) > len(changes)}")
+                    # print("&&&&&&&&")
 
         coherent_times_eval[sn] = coherent_changes 
         same_times_eval[sn] = same_changes

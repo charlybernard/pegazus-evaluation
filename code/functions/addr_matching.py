@@ -147,7 +147,7 @@ def get_address_label_from_street_and_number(number:str, street_label:str, excep
         return None
     
     sn_label = sp.simplify_nolang_name_version(number, "number")
-    th_label = sp.simplify_french_name_version(street_label, "thoroughfare")
+    _, th_label = sp.normalize_and_simplify_name_version(street_label, "thoroughfare", "fr")
 
     # If th_label is in exceptions, it must be remplaced by the related exception
     exc_th_label = exceptions.get(th_label)

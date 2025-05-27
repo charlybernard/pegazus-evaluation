@@ -1,5 +1,5 @@
 import functions.addr_matching as am
-import functions.db_connection as dbc
+import code.functions.db_utils as dbc
 
 data_folder = "../data/eval_1/"
 

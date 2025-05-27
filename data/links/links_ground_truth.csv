@@ -1,4 +1,4 @@
-from_source,to_source,similar_geom,simplified_label
+from_source,to_source,similar_geom,simplified_labels
 atlas_municipal_1888_adresses,ban_adresses,False,ruecharenton||137
 atlas_jacoubet_1836_adresses,ban_adresses,False,ruefaubourgsaintantoine||258
 atlas_vasserot_1810_adresses,atlas_jacoubet_1836_adresses,True,boulevardbourdon||10

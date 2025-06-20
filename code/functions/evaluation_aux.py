@@ -10,7 +10,15 @@ import functions.geom_processing as gp
 ################# Generate a random geometry for each street number #################
 
 def get_random_geometry_for_street_number(values, epsg_code, max_distance=5):
-    # For each version value, generate a random geometry within 5 meters of the centroid
+    """
+    For each version value, generate a random geometry within max_distance meters of the centroid.
+    Args:
+        values: dict of version values.
+        epsg_code: EPSG code for CRS.
+        max_distance: max distance in meters for random geometry.
+    Returns:
+        dict with new geometries for each version.
+    """
     crs_to_uri = gp.get_crs_dict().get(epsg_code)
     geom_transformers = gp.get_useful_transformers_for_to_crs(epsg_code, ["EPSG:4326", "EPSG:3857", "EPSG:2154"])
     new_values = {}
@@ -24,58 +32,69 @@ def get_random_geometry_for_street_number(values, epsg_code, max_distance=5):
 ################# Generate new valid time contained in old valid time for each version value #################
 
 def generate_random_dates_for_versions(versions):
-    # Génération des dates aléatoires
+    """
+    Generate random start and end dates for each version, contained within the original interval.
+    Args:
+        versions: DataFrame with 'startTime' and 'endTime' columns.
+    """
     for idx, row in versions.iterrows():
         start_time_col_name = 'startTime'
         end_time_col_name = 'endTime'
 
-        # Get the start and end time from the row
-        # Note: Assumes the columns are named 'startTime' and 'endTime'
-        # If the columns are named differently, change the following lines accordingly
+        # Parse start and end times
         start = parser.parse(row[start_time_col_name])
         end = parser.parse(row[end_time_col_name])
 
-        # Convertir en timestamps pour générer aléatoirement
+        # Convert to timestamps for random generation
         start_ts = start.timestamp()
         end_ts = end.timestamp()
 
         t1_ts = get_random_date_between_interval(start_ts, end_ts)
         t2_ts = t1_ts
         loop_nb, max_loop = 0, 10
+        # Ensure t1_ts and t2_ts are not equal
         while t1_ts == t2_ts or loop_nb <= max_loop:
             t2_ts = get_random_date_between_interval(start_ts, end_ts)
             loop_nb += 1
 
-        # Trier pour garantir t1 < t2
+        # Sort to ensure t1 < t2
         t1, t2 = sorted([t1_ts, t2_ts])
 
         start = t1.isoformat() + 'T00:00:00Z'
         end = t2.isoformat() + 'T00:00:00Z'
 
         if start == end:
-            print(f"Warning ! start time and end time have the same value : {start}")
+            print(f"Warning! start time and end time have the same value: {start}")
 
         versions.at[idx, start_time_col_name] = start
         versions.at[idx, end_time_col_name] = end
 
 def get_random_date_between_interval(ts1, ts2):
-    """Returns a date without time, randomly between two timestamps"""
+    """
+    Returns a date (without time), randomly between two timestamps.
+    Args:
+        ts1: start timestamp.
+        ts2: end timestamp.
+    Returns:
+        datetime.date object.
+    """
     ts = random.uniform(ts1, ts2)
     return datetime.fromtimestamp(ts).date()
 
 ################# Generate new changes coherent with generated ones #################
 
 def generate_random_dates_for_changes(changes):
-    # Génération des dates aléatoires
+    """
+    Generate random dates for changes, ensuring coherence with existing times.
+    Args:
+        changes: DataFrame with 'time', 'timeAfter', 'timeBefore' columns.
+    """
     for idx, row in changes.iterrows():
         time_col_name = 'time'
         time_after_col_name = 'timeAfter'
         time_before_col_name = 'timeBefore'
 
-        # Get the start and end time from the row
-        # Note: Assumes the columns are named 'startTime' and 'endTime'
-        # If the columns are named differently, change the following lines accordingly
-        
+        # Parse times, handle missing values
         try:
             time = parser.parse(row[time_col_name])
         except:
@@ -91,6 +110,7 @@ def generate_random_dates_for_changes(changes):
         except:
             time_before = None
 
+        # Choose the most appropriate time value
         if time is not None:
             final_time = time
 
@@ -114,6 +134,17 @@ def generate_random_dates_for_changes(changes):
 ##############################################################################
 
 def get_sources_for_versions(df, frag_source_label):
+    """
+    Build a dictionary mapping street numbers to their versions and sources.
+    Args:
+        df: DataFrame with columns 'label', 'sn', 'attrVersion', 'sourceLabel'.
+        frag_source_label: label to filter sources.
+    Returns:
+        dict: {sn_label: {attr_version: set(source_labels)}}
+    """
+    
+    df = df.dropna(subset=['label']) # Ensure 'label' is not NaN
+
     if frag_source_label is not None:
         unique_sn_labels = df[df["sourceLabel"] == frag_source_label]["label"].unique()
     else:
@@ -134,6 +165,13 @@ def get_sources_for_versions(df, frag_source_label):
     return sources_for_versions
 
 def get_times_for_changes(df):
+    """
+    Build a dictionary mapping street numbers to their change times.
+    Args:
+        df: DataFrame with columns 'label', 'timeDay', 'timeAfterDay', 'timeBeforeDay'.
+    Returns:
+        dict: {sn_label: [[time, time_after, time_before], ...]}
+    """
     unique_sn_labels = df["label"].unique()
     times_for_changes = {sn: [] for sn in set(unique_sn_labels)}
 
@@ -151,11 +189,18 @@ def get_times_for_changes(df):
 ##############################################################################
 
 def get_graph_quality_from_attribute_versions(unmodified_sn, modified_sn, frag_source_label, union=False):
+    """
+    Compare attribute versions between unmodified and modified street numbers.
+    Args:
+        unmodified_sn: dict of original versions.
+        modified_sn: dict of modified versions.
+        frag_source_label: label to ignore in comparison.
+        union: if True, compare all street numbers in union of keys.
+    Returns:
+        List of dicts with evaluation metrics.
+    """
     if union:
         all_sn = set(unmodified_sn) | set(modified_sn)
-        # unlinked_housenumbers_from_graph = set(modified_sn)-set(unmodified_sn)
-        # unlinked_housenumbers_from_ground_truth = set(unmodified_sn)-set(modified_sn)
-
         nb_versions_eval, sources_eval = {sn:False for sn in all_sn}, {sn:False for sn in all_sn}
     else:
         nb_versions_eval, sources_eval = {}, {}
@@ -165,14 +210,9 @@ def get_graph_quality_from_attribute_versions(unmodified_sn, modified_sn, frag_s
 
         if unmodified_versions is None or len(versions) != len(unmodified_versions):
             same_nb_versions, same_sources = False, False
-            # print(sn)
-            # print(unmodified_versions)
-            # print(versions)
-            # # print(f"{len(unmodified_versions)} -> {len(versions)} : {len(unmodified_versions) > len(versions)}")
-            # print("&&&&&&&&")
-
         else:
             same_nb_versions, same_sources = True, True
+
             for version, sources in versions.items():
                 has_similar_sources = False
                 for unmodified_version, unmodified_sources in unmodified_versions.items():
@@ -183,11 +223,6 @@ def get_graph_quality_from_attribute_versions(unmodified_sn, modified_sn, frag_s
                         has_similar_sources = True
                 if not has_similar_sources:
                     same_sources = False
-                    # print(sn)
-                    # print(unmodified_versions)
-                    # print(versions)
-                    # print(f"{len(unmodified_versions)} -> {len(versions)} : {len(unmodified_versions) > len(versions)}")
-                    # print("&&&&&&&&")
 
         sources_eval[sn] = same_sources
         nb_versions_eval[sn] = same_nb_versions
@@ -214,18 +249,20 @@ def get_graph_quality_from_attribute_versions(unmodified_sn, modified_sn, frag_s
     return [sn_with_good_nb_of_versions, sn_with_versions_with_good_sources]
 
 def get_graph_quality_from_attribute_changes(unmodified_sn, modified_sn):
-
+    """
+    Compare attribute changes between unmodified and modified street numbers.
+    Args:
+        unmodified_sn: dict of original changes.
+        modified_sn: dict of modified changes.
+    Returns:
+        List of dicts with evaluation metrics.
+    """
     nb_changes_eval, same_times_eval, coherent_times_eval = {}, {}, {}
     for sn, changes in modified_sn.items():
         unmodified_changes = unmodified_sn.get(sn)
 
         if len(changes) != len(unmodified_changes):
             same_nb_changes, same_changes, coherent_changes = False, False, False
-            # print(sn)
-            # print(changes)
-            # print(unmodified_changes)
-            # print(f"{len(unmodified_changes)} -> {len(changes)} : {len(unmodified_changes) > len(changes)}")
-            # print("&&&&&&&&")
         
         else:
             same_nb_changes, same_changes, coherent_changes = True, True, True
@@ -235,36 +272,19 @@ def get_graph_quality_from_attribute_changes(unmodified_sn, modified_sn):
                 for unmodified_change in unmodified_changes:
                     cg = [None if math.isnan(x) else x for x in change]
                     unmodified_cg = [None if math.isnan(x) else x for x in unmodified_change]
-                    # if sn == "ruereuilly||30":
-                    #     print(cg)
-                    #     print(unmodified_cg)
-                    #     print("--------")
+
                     if cg[0] is not None and cg[0] == unmodified_cg[0]:
                         has_similar_changes, has_coherent_changes = True, True
                     elif cg[0] is not None and None not in unmodified_cg[1:] and unmodified_cg[1] <= cg[0] and cg[0] <= unmodified_cg[2]:
-                        # print(sn)
-                        # print(change)
-                        # print(unmodified_cg)
-                        # print(unmodified_changes)
                         has_coherent_changes = True
                     elif cg[0] is None and [cg[1:] == unmodified_cg[1:]]:
                         has_similar_changes, has_coherent_changes = True, True
                         
                 if not has_similar_changes:
                     same_changes = False
-                    # print(sn)
-                    # print(change)
-                    # print(unmodified_changes)
-                    # # print(f"{len(unmodified_changes)} -> {len(changes)} : {len(unmodified_changes) > len(changes)}")
-                    # print("&&&&&&&&")
 
                 if not has_coherent_changes:
                     coherent_changes = False
-                    # print(sn)
-                    # print(change)
-                    # print(unmodified_changes)
-                    # # print(f"{len(unmodified_changes)} -> {len(changes)} : {len(unmodified_changes) > len(changes)}")
-                    # print("&&&&&&&&")
 
         coherent_times_eval[sn] = coherent_changes 
         same_times_eval[sn] = same_changes
@@ -304,27 +324,43 @@ def get_graph_quality_from_attribute_changes(unmodified_sn, modified_sn):
 
 ###############################################################################
 
-
 def get_ground_truth_version_sources(links_ground_truth_file, sn_without_link_ground_truth_file, source_mapping):
+    """
+    Get ground truth version sources from links and unlinked street numbers.
+    Args:
+        links_ground_truth_file: CSV file with links.
+        sn_without_link_ground_truth_file: CSV file with unlinked street numbers.
+        source_mapping: dict mapping sources to labels and orders.
+    Returns:
+        dict: ground truth grouped links for all street numbers.
+    """
     d1 = get_ground_truth_version_sources_from_links(links_ground_truth_file, source_mapping)
     d2 = get_ground_truth_version_sources_from_unlinked_streetnumbers(sn_without_link_ground_truth_file, source_mapping)
 
     return d1|d2
 
 def get_ground_truth_version_sources_from_links(links_ground_truth_file, source_mapping):
-
+    """
+    Get ground truth version sources from linked street numbers.
+    Args:
+        links_ground_truth_file: CSV file with links.
+        source_mapping: dict mapping sources to labels and orders.
+    Returns:
+        dict: grouped links for each street number.
+    """
     order_to_label = {v["order"]: v["label"] for v in source_mapping.values()}
 
     df = pd.read_csv(links_ground_truth_file)
+    df = df.dropna(subset=['simplified_label']) # Ensure 'simplified_label' is not NaN
 
-    unique_sn_labels = df["simp_label"].unique()
+    unique_sn_labels = df["simplified_label"].unique()
     ground_truth_links = {sn: [] for sn in set(unique_sn_labels)}
     ground_truth_grouped_links = {}
     for _, row in df.iterrows():
-        label = row["simp_label"]
-        table_from = row["table_from"]
-        table_to = row["table_to"]
-        are_similar_geom = row["are_similar_geom"]
+        label = row["simplified_label"]
+        table_from = row["from_source"]
+        table_to = row["to_source"]
+        are_similar_geom = row["similar_geom"]
         order_from = source_mapping[table_from]["order"]
         order_to = source_mapping[table_to]["order"]
         ground_truth_links[label].append((order_from, order_to, are_similar_geom))
@@ -333,22 +369,22 @@ def get_ground_truth_version_sources_from_links(links_ground_truth_file, source_
         links = ground_truth_links[sn]
         links.sort()
         
-        # Liste pour stocker les groupes
+        # List to store groups of sources
         groups = []
 
-        # Démarrer un groupe avec le premier élément
+        # Start a group with the first element
         current_group = [links[0][0]]
 
         for source, target, value in links:
             if value:
-                # Si le lien est vrai, on continue dans le groupe
+                # If the link is true, continue in the group
                 current_group.append(target)
             else:
-                # Sinon, on termine le groupe et on en commence un nouveau
+                # Otherwise, end the group and start a new one
                 groups.append(current_group)
                 current_group = [target]
 
-        # Ne pas oublier d'ajouter le dernier groupe
+        # Don't forget to add the last group
         groups.append(current_group)
         
         groupes_with_labels = {str(uuid4()): {order_to_label[o] for o in group} for group in groups}
@@ -358,12 +394,21 @@ def get_ground_truth_version_sources_from_links(links_ground_truth_file, source_
     return ground_truth_grouped_links
 
 def get_ground_truth_version_sources_from_unlinked_streetnumbers(sn_without_link_ground_truth_file, source_mapping):
+    """
+    Get ground truth version sources from unlinked street numbers.
+    Args:
+        sn_without_link_ground_truth_file: CSV file with unlinked street numbers.
+        source_mapping: dict mapping sources to labels.
+    Returns:
+        dict: grouped links for each unlinked street number.
+    """
     df = pd.read_csv(sn_without_link_ground_truth_file)
+    df = df.dropna(subset=['simplified_label']) # Ensure 'simplified_label' is not NaN
 
     ground_truth_grouped_links = {}
     for _, row in df.iterrows():
-        label = row["simp_label"]
-        source = row["table"]
+        label = row["simplified_label"]
+        source = row["source"]
         source_label = source_mapping[source].get("label")
         group = {str(uuid4()):{source_label}}
         ground_truth_grouped_links[label] = group

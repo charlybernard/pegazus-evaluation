@@ -102,7 +102,7 @@ def select_streetnumbers_attr_geom_version_valid_times(graphdb_url, repository_n
     WHERE {{
         BIND({facts_named_graph.n3()} AS ?gf)
         GRAPH ?gf {{
-            ?sn a addr:Landmark ;addr:isLandmarkType ltype:StreetNumber ; addr:hasAttribute [addr:isAttributeType atype:Geometry; addr:hasAttributeVersion ?attrVersion].
+            ?sn a addr:Landmark ; addr:isLandmarkType ltype:StreetNumber ; addr:hasAttribute [addr:isAttributeType atype:Geometry; addr:hasAttributeVersion ?attrVersion].
         }}
         FILTER NOT EXISTS {{
             ?attrVersion addr:hasTrace ?traceAV1, ?traceAV2 .
@@ -149,7 +149,7 @@ def select_streetnumbers_attr_geom_change_valid_times(graphdb_url, repository_na
     PREFIX atype: <http://rdf.geohistoricaldata.org/id/codes/address/attributeType/>
     PREFIX addr: <http://rdf.geohistoricaldata.org/def/address#>
 
-    SELECT ?sn ?attr ?change ?time ?timeAfter ?timeBefore 
+    SELECT DISTINCT ?sn ?attr ?change ?time ?timeAfter ?timeBefore 
     WHERE {{
         BIND({facts_named_graph.n3()} AS ?gf)
         GRAPH ?gf {{ ?change a addr:AttributeChange ; addr:appliedTo ?attr ; addr:dependsOn ?ev . }}

@@ -315,21 +315,65 @@ def get_centroid_of_union_of_geosparql_wktliterals(wkt_literal_list:list[Literal
 
     return geom_union.centroid
 
-# def get_point_around_wkt_literal_geoms(wkt_literal_list:list[Literal], crs_to_uri:URIRef, transformers:dict[str, pyproj.Transformer]={}, max_distance=5):
-#     GEO = Namespace("http://www.opengis.net/ont/geosparql#")
-#     centroid = get_centroid_of_union_of_geosparql_wktliterals(wkt_literal_list, crs_to_uri, transformers)
-#     new_point = get_new_point_near_geom(centroid, max_distance)
-#     new_point_wkt = shapely.to_wkt(new_point)
-#     wkt_out_geom = Literal(f"{crs_to_uri.n3()} {new_point_wkt}", datatype=GEO.wktLiteral)
 
-#     return wkt_out_geom
+def get_point_around_wkt_literal_geoms(
+    wkt_literal_list: list[Literal],
+    crs_to_uri: URIRef,
+    transformers: dict[str, pyproj.Transformer] = {},
+    max_distance: float = 5
+):
+    """
+    Generate a point geometry spatially similar to a set of geometries
+    described as WKT literals.
 
-def get_point_around_wkt_literal_geoms(wkt_literal_list:list[Literal], crs_to_uri:URIRef, transformers:dict[str, pyproj.Transformer]={}, max_distance=5):
+    The input WKT literals are converted into Shapely geometries using the
+    target CRS. A representative point is then generated so that it lies
+    within a spatial tolerance defined by ``max_distance`` around the
+    original geometries.
+
+    This function is mainly used to simulate spatial uncertainty or
+    fragmentary geometric knowledge when generating synthetic factoids.
+
+    Parameters
+    ----------
+    wkt_literal_list : list[Literal]
+        A list of RDF literals encoded as GeoSPARQL WKT literals describing
+        point geometries.
+    crs_to_uri : URIRef
+        URI of the target coordinate reference system (CRS) used to interpret
+        the WKT literals.
+    transformers : dict[str, pyproj.Transformer], optional
+        A dictionary of CRS transformers used to convert geometries into the
+        target CRS. Default is an empty dictionary.
+    max_distance : float, optional
+        Maximum distance (in CRS units) used to define spatial similarity
+        between geometries. Default is 5.
+
+    Returns
+    -------
+    Literal
+        A GeoSPARQL WKT literal representing a point geometry spatially
+        similar to the input geometries.
+    """
+
+    # GeoSPARQL namespace
     GEO = Namespace("http://www.opengis.net/ont/geosparql#")
-    points = [wkt_to_shapely(wkt_literal, crs_to_uri, transformers) for wkt_literal in wkt_literal_list]
+
+    # Convert WKT literals to Shapely point geometries
+    points = [
+        wkt_to_shapely(wkt_literal, crs_to_uri, transformers)
+        for wkt_literal in wkt_literal_list
+    ]
+
+    # Generate a representative point within the spatial tolerance
     new_point = generate_similar_point(points, max_distance)
+
+    # Convert the generated point back to a WKT literal
     new_point_wkt = shapely.to_wkt(new_point)
-    wkt_out_geom = Literal(f"{crs_to_uri.n3()} {new_point_wkt}", datatype=GEO.wktLiteral)
+    wkt_out_geom = Literal(
+        f"{crs_to_uri.n3()} {new_point_wkt}",
+        datatype=GEO.wktLiteral
+    )
 
     return wkt_out_geom
 
@@ -337,26 +381,72 @@ def get_point_around_wkt_literal_geoms(wkt_literal_list:list[Literal], crs_to_ur
 #####################################################################
 
 def generate_similar_point(points, max_distance=5):
+    """
+    Generate a point that is spatially similar to a set of input points.
+
+    If only one point is provided, a new point is generated in the vicinity
+    of the original geometry. If multiple points are provided, the function
+    computes the intersection of buffers around each point and returns a
+    representative point located within this intersection.
+
+    Parameters
+    ----------
+    points : list
+        A list of point geometries (e.g. coordinate tuples or Point-compatible
+        geometries).
+    max_distance : float, optional
+        Radius (in the same unit as the input coordinates) used to define
+        spatial similarity. Default is 5.
+
+    Returns
+    -------
+    Point
+        A point geometry that is spatially similar to the input points.
+        If no common intersection exists, the first input point is returned.
+    """
+
+    # If only one point is provided, generate a nearby point
     if len(points) == 1:
         return get_new_point_near_geom(points[0], max_distance=max_distance)
-    
-    # Étape 1 : générer les buffers
+
+    # ------------------------------------------------------------------
+    # Step 1: generate buffer zones around each point
+    # ------------------------------------------------------------------
     buffers = [Point(p).buffer(max_distance) for p in points]
-    
-    # Étape 2 : intersection de tous les buffers
+
+    # ------------------------------------------------------------------
+    # Step 2: compute the intersection of all buffers
+    # ------------------------------------------------------------------
     intersection = buffers[0]
     for buf in buffers[1:]:
         intersection = intersection.intersection(buf)
+
+        # If there is no common intersection, fall back to the first point
         if intersection.is_empty:
-            return points[0]  # On renvoie le premier point
-        
-    # Étape 3 : générer un point dans l'intersection (le centroïde)
+            return points[0]
+
+    # ------------------------------------------------------------------
+    # Step 3: generate a representative point inside the intersection
+    # ------------------------------------------------------------------
+    # The centroid is used as a simple and robust representative geometry
     return intersection.centroid
+
 
 def get_new_point_near_geom(geom, max_distance=5):
     """
     Generates a random point within a `max_distance` radius of the `geom` geometry.
     The geometry must be in projected coordinates (e.g. EPSG:2154, in metres).
+    Parameters
+    ----------
+    geom : shapely.geometry
+        The reference geometry around which to generate a new point.
+    max_distance : float
+        The maximum distance (in the same unit as the geometry's coordinates)
+        from the reference geometry to the new point.
+    Returns
+    -------
+    shapely.geometry.Point
+        A new point geometry located within `max_distance` of the input geometry.
     """
 
     centroid = geom.centroid
@@ -364,10 +454,10 @@ def get_new_point_near_geom(geom, max_distance=5):
     # Random angle between 0 and 2 * pi (in radians)
     angle = random.uniform(0, 2 * math.pi)
 
-    # Distance aléatoire entre 0 et max_distance
+    # Random distance between 0 and max_distance
     distance = random.uniform(0, max_distance)
 
-    # Coordonnées du nouveau point
+    # Coordinates of the new point
     dx = distance * math.cos(angle)
     dy = distance * math.sin(angle)
 

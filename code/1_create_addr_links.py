@@ -11,7 +11,7 @@ from functions.db_utils import PostgresManager
 # Variables
 
 # Define data and configuration file paths
-data_folder = "../data/sources/"
+data_folder = "../data/sources/fbg_saint_antoine/"
 links_folder = "../data/links/"
 db_config_file = "../configs/db_config.ini"
 proj_config_file = "../configs/project_config.ini"

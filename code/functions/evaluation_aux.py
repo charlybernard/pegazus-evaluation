@@ -250,45 +250,117 @@ def get_graph_quality_from_attribute_versions(unmodified_sn, modified_sn, frag_s
 
 def get_graph_quality_from_attribute_changes(unmodified_sn, modified_sn):
     """
-    Compare attribute changes between unmodified and modified street numbers.
+    Compares temporal attribute changes between a reference graph (unmodified_sn) and a modified / reconstructed graph (modified_sn).
+
+    Each house number is associated with a list of temporal changes, represented as triplets: [t, t_min, t_max]
+
+    where:
+    - t     : point-in-time date
+    - t_min : lower temporal bound
+    - t_max : upper temporal bound
+
+    If t is defined (non-null), it represents the exact date of the change;
+    the other values are null (or ignored if non-null): [t, None, None].
+    Otherwise, the change is represented by one of the following intervals:
+    - [t_min, t_max], i.e. [None, t_min, t_max];
+    - ]-inf, t_max], i.e. [None, None, t_max];
+    - [t_min, +inf[, i.e. [None, t_min, None].
+
+    The function evaluates the quality of the modified graph according to
+    three criteria:
+    1) preservation of the number of changes: for each house number, the number of changes must be identical;
+    2) strict identity of dates whenever possible: each change must match an identical date or an identical interval;
+    3) temporal consistency of inferred dates with respect to the initial intervals: each point-in-time date must be included in the corresponding interval.
+    In unmodified_sn, if a change is associated with a temporal interval [t_min, t_max],
+    then its counterpart in modified_sn must have a temporal value satisfying t_min <= t <= t_max.
+
     Args:
-        unmodified_sn: dict of original changes.
-        modified_sn: dict of modified changes.
+        unmodified_sn (dict): temporal changes derived from source data.
+        modified_sn (dict): temporal changes after processing / inference.
+
     Returns:
-        List of dicts with evaluation metrics.
+        list[dict]: three dictionaries containing global metrics
+                    (true / false / total / IoU) for each criterion.
     """
-    nb_changes_eval, same_times_eval, coherent_times_eval = {}, {}, {}
+
+
+    # Dictionnaires d’évaluation par numéro de voie
+    nb_changes_eval = {}       # même nombre de changements
+    same_times_eval = {}       # mêmes dates exactes
+    coherent_times_eval = {}   # cohérence temporelle
+
+    # Parcours de chaque numéro de voie modifié
     for sn, changes in modified_sn.items():
         unmodified_changes = unmodified_sn.get(sn)
-
+ 
+        # --- CRITÈRE 1 : même nombre de changements ---
         if len(changes) != len(unmodified_changes):
-            same_nb_changes, same_changes, coherent_changes = False, False, False
-        
-        else:
-            same_nb_changes, same_changes, coherent_changes = True, True, True
+            same_nb_changes = False
+            same_changes = False
+            coherent_changes = False
 
+        else:
+            same_nb_changes = True
+            same_changes = True
+            coherent_changes = True
+
+            # Parcours des changements reconstruits
             for change in changes:
-                has_similar_changes, has_coherent_changes = False, False
+                has_similar_changes = False
+                has_coherent_changes = False
+
+                # Comparaison avec chaque changement de référence
                 for unmodified_change in unmodified_changes:
+
+                    # Normalisation des nan en None pour faciliter les comparaisons
                     cg = [None if math.isnan(x) else x for x in change]
                     unmodified_cg = [None if math.isnan(x) else x for x in unmodified_change]
 
+                    # --- Cas 1 : date ponctuelle strictement identique ---
                     if cg[0] is not None and cg[0] == unmodified_cg[0]:
-                        has_similar_changes, has_coherent_changes = True, True
-                    elif cg[0] is not None and None not in unmodified_cg[1:] and unmodified_cg[1] <= cg[0] and cg[0] <= unmodified_cg[2]:
+                        has_similar_changes = True
                         has_coherent_changes = True
-                    elif cg[0] is None and [cg[1:] == unmodified_cg[1:]]:
-                        has_similar_changes, has_coherent_changes = True, True
-                        
+
+                    # --- Cas 2 : date ponctuelle incluse dans un intervalle ---
+                    elif cg[0] is not None:
+                        t = cg[0]
+                        t_min, t_max = unmodified_cg[1], unmodified_cg[2]
+
+                        if (
+                            (t_min is None or t >= t_min)
+                            and (t_max is None or t <= t_max)
+                        ):
+                            has_coherent_changes = True
+
+                    # --- Cas 3 : intervalle temporel strictement identique ---
+                    elif cg[0] is None and cg[1:] == unmodified_cg[1:]:
+                        has_similar_changes = True
+                        has_coherent_changes = True
+
+                # Si aucun changement strictement identique n’a été trouvé
                 if not has_similar_changes:
                     same_changes = False
 
+                # Si aucun changement cohérent n’a été trouvé
                 if not has_coherent_changes:
                     coherent_changes = False
 
-        coherent_times_eval[sn] = coherent_changes 
-        same_times_eval[sn] = same_changes
+        # print(f"Evaluating street number: {sn}")
+        # print(f"Modified changes: {changes}")
+        # print(f"Unmodified changes: {unmodified_changes}")
+
+        # print(same_nb_changes, same_changes, coherent_changes)
+        # print("---------------------------------------------------")
+
+        # Stockage des résultats pour le numéro de voie courant
         nb_changes_eval[sn] = same_nb_changes
+        same_times_eval[sn] = same_changes
+        coherent_times_eval[sn] = coherent_changes
+
+    # --- Agrégation globale des résultats ---
+
+    nb_true_nb_changes = sum(nb_changes_eval.values())
+    nb_false_nb_changes = len(nb_changes_eval) - nb_true_nb_changes
 
     nb_true_same_changes = sum(same_times_eval.values())
     nb_false_same_changes = len(same_times_eval) - nb_true_same_changes
@@ -296,31 +368,34 @@ def get_graph_quality_from_attribute_changes(unmodified_sn, modified_sn):
     nb_true_coherent_changes = sum(coherent_times_eval.values())
     nb_false_coherent_changes = len(coherent_times_eval) - nb_true_coherent_changes
 
-    nb_true_nb_changes = sum(nb_changes_eval.values())
-    nb_false_nb_changes = len(nb_changes_eval) - nb_true_nb_changes
+    # Métriques finales (avec IoU assimilé à un taux de conformité)
+    sn_with_good_nb_of_changes = {
+        "true": nb_true_nb_changes,
+        "false": nb_false_nb_changes,
+        "total": len(nb_changes_eval),
+        "IoU": nb_true_nb_changes / len(nb_changes_eval)
+    }
 
     sn_with_changes_with_same_times = {
         "true": nb_true_same_changes,
         "false": nb_false_same_changes,
-        "total":len(same_times_eval),
-        "IoU": nb_true_same_changes/len(same_times_eval)
+        "total": len(same_times_eval),
+        "IoU": nb_true_same_changes / len(same_times_eval)
     }
 
-    sn_with_changes_with_cohrent_times = {
+    sn_with_changes_with_coherent_times = {
         "true": nb_true_coherent_changes,
         "false": nb_false_coherent_changes,
-        "total":len(coherent_times_eval),
-        "IoU": nb_true_coherent_changes/len(coherent_times_eval)
+        "total": len(coherent_times_eval),
+        "IoU": nb_true_coherent_changes / len(coherent_times_eval)
     }
 
-    sn_with_good_nb_of_changes = {
-        "true": nb_true_nb_changes,
-        "false": nb_false_nb_changes,
-        "total":len(nb_changes_eval),
-        "IoU": nb_true_nb_changes/len(nb_changes_eval)
-    }
+    return [
+        sn_with_good_nb_of_changes,
+        sn_with_changes_with_same_times,
+        sn_with_changes_with_coherent_times
+    ]
 
-    return [sn_with_good_nb_of_changes, sn_with_changes_with_same_times, sn_with_changes_with_cohrent_times]
 
 ###############################################################################
 

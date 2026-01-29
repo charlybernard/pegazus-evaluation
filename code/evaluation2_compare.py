@@ -12,11 +12,17 @@ graphdb_url = URIRef("http://localhost:7200")
 # repository_states_name = "addresses_from_factoids_with_frag_states" in which we add only the fragmentary states
 # repository_states_and_events_name = "addresses_from_factoids_with_frag_states_and_events" in which we add the fragmentary states and events
 repository_name = "addresses_from_factoids"
-repository_states_name = "addresses_from_factoids_with_frag_states"
-repository_states_and_events_name = "addresses_from_factoids_with_frag_states_and_events"
+repository_states_name = "addresses_from_factoids"
+repository_states_and_events_name = "addresses_from_factoids"
+# repository_states_name = "addresses_from_factoids_with_frag_states"
+# repository_states_and_events_name = "addresses_from_factoids_with_frag_states_and_events"
 
 # Named graph names
 facts_named_graph_name = "facts"
+facts_with_states_named_graph_name = "facts_with_fragmentary_sn_states"
+facts_with_states_and_events_named_graph_name = "facts_with_fragmentary_sn_states_and_events"
+# facts_with_states_named_graph_name = "facts"
+# facts_with_states_and_events_named_graph_name = "facts"
 frag_sn_states_named_graph_name = "fragmentary_states_streetnumbers"
 frag_sn_events_named_graph_name = "fragmentary_events_streetnumbers"
 
@@ -34,12 +40,12 @@ output_file = data_folder + "out.csv"
 # Create the CSV files from the SPARQL queries
 frag_named_graph_names = [frag_sn_states_named_graph_name, frag_sn_events_named_graph_name]
 dfsq.select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_name, facts_named_graph_name, sn_attr_geom_sources_file)
-dfsq.select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_states_name, facts_named_graph_name, sn_attr_geom_states_and_sources_file)
-dfsq.select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_states_and_events_name, facts_named_graph_name, sn_attr_geom_states_events_sources_file)
+dfsq.select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_states_name, facts_with_states_named_graph_name, sn_attr_geom_states_and_sources_file)
+dfsq.select_streetnumbers_attr_geom_version_and_sources(graphdb_url, repository_states_and_events_name, facts_with_states_and_events_named_graph_name, sn_attr_geom_states_events_sources_file)
 
 dfsq.select_streetnumbers_attr_geom_change_times(graphdb_url, repository_name, facts_named_graph_name, sn_attr_geom_times_file)
-dfsq.select_streetnumbers_attr_geom_change_times(graphdb_url, repository_states_name, facts_named_graph_name, sn_attr_geom_states_and_times_file)
-dfsq.select_streetnumbers_attr_geom_change_times(graphdb_url, repository_states_and_events_name, facts_named_graph_name, sn_attr_geom_states_events_times_file)
+dfsq.select_streetnumbers_attr_geom_change_times(graphdb_url, repository_states_name, facts_with_states_named_graph_name, sn_attr_geom_states_and_times_file)
+dfsq.select_streetnumbers_attr_geom_change_times(graphdb_url, repository_states_and_events_name, facts_with_states_and_events_named_graph_name, sn_attr_geom_states_events_times_file)
 
 # Remplacer 'ton_fichier.csv' par le nom de ton fichier
 df_versions_unmodified = pd.read_csv(sn_attr_geom_sources_file)

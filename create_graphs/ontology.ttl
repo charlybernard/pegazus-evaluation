@@ -15,6 +15,7 @@
 @prefix organization: <http://www.w3.org/ns/org#> .
 @prefix vann: <http://purl.org/vocab/vann/> .
 @prefix cc: <http://creativecommons.org/ns#> .
+@prefix sd:   <http://www.w3.org/ns/sparql-service-description#> .
 
 # Core namespaces
 @prefix atype: <http://rdf.geohistoricaldata.org/id/codes/address/attributeType/> .
@@ -1423,3 +1424,36 @@ time:unitYear rdf:type owl:NamedIndividual ,
                                           skos:definition "Extension du calendrier julien à avant son introduction"@fr ;
                                           skos:prefLabel "calendrier julien proleptique"@fr ,
                                                          "proleptic Julian calendar"@en .
+
+##### Descriptions of named graphs
+:Graph
+    a owl:Class ;
+    rdfs:label "Graph"@en ;
+    rdfs:label "Graphe"@fr ;
+    rdfs:comment "A named graph used as a container for RDF statements within the knowledge construction process."@en ;
+    rdfs:comment "Graphe nommé utilisé comme conteneur d’énoncés RDF dans le processus de construction de la connaissance."@fr ;
+    rdfs:subClassOf sd:NamedGraph .
+
+:SourceGraph
+    a owl:Class ;
+    rdfs:label "Source graph"@en ;
+    rdfs:label "Graphe source"@fr ;
+    rdfs:comment "A named graph containing data directly derived from primary sources."@en ;
+    rdfs:comment "Graphe nommé contenant des données directement issues de sources primaires."@fr ;
+    rdfs:subClassOf :Graph .
+
+:ConstructionGraph
+    a owl:Class ;
+    rdfs:label "Construction graph"@en ;
+    rdfs:label "Graphe de construction"@fr ;
+    rdfs:comment "A named graph containing intermediate results produced during the knowledge graph construction process."@en ;
+    rdfs:comment "Graphe nommé contenant des résultats intermédiaires produits au cours du processus de construction du graphe de connaissances."@fr ;
+    rdfs:subClassOf :Graph .
+
+:FinalGraph
+    a owl:Class ;
+    rdfs:label "Final graph"@en ;
+    rdfs:label "Graphe final"@fr ;
+    rdfs:comment "A named graph representing the final, consolidated knowledge graph."@en ;
+    rdfs:comment "Graphe nommé représentant le graphe de connaissances final et consolidé."@fr ;
+    rdfs:subClassOf :Graph .
